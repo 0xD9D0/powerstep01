@@ -109,7 +109,7 @@ void POWERSTEP01::Begin(uint8_t nbShields)
   /* Disable POWERSTEP01 powerstage */
   for (uint32_t i = 0; i < nbShields; i++)
   {
-    CmdDisable(i);
+
     /* Get Status to clear flags after start up */
     CmdGetStatus(i);
   }
@@ -289,7 +289,7 @@ void POWERSTEP01::HardStop(uint8_t shieldId)
   PwmStop(shieldId);
 
   /* Disable power stage */
-  CmdDisable(shieldId);
+
 
   /* Set inactive state */
   shieldPrm[shieldId].motionState = INACTIVE;
@@ -514,25 +514,7 @@ void POWERSTEP01::WaitWhileActive(uint8_t shieldId)
 	while (GetShieldState(shieldId) != INACTIVE);
 }
 
-/******************************************************//**
- * @brief  Issue the Disable command to the POWERSTEP01 of the specified shield
- * @param[in] shieldId (from 0 to 2)
- * @retval None
- **********************************************************/
-void POWERSTEP01::CmdDisable(uint8_t shieldId)
-{
-  SendCommand(shieldId, POWERSTEP01_DISABLE);
-}
 
-/******************************************************//**
- * @brief  Issues the Enable command to the POWERSTEP01 of the specified shield
- * @param[in] shieldId (from 0 to 2)
- * @retval None
- **********************************************************/
-void POWERSTEP01::CmdEnable(uint8_t shieldId)
-{
-  SendCommand(shieldId, POWERSTEP01_ENABLE);
-}
 
 /******************************************************//**
  * @brief  Issues the GetParam command to the POWERSTEP01 of the specified shield
@@ -540,7 +522,7 @@ void POWERSTEP01::CmdEnable(uint8_t shieldId)
  * @param[in] param Register adress (POWERSTEP01_ABS_POS, POWERSTEP01_MARK,...)
  * @retval Register value
  **********************************************************/
-uint32_t POWERSTEP01::CmdGetParam(uint8_t shieldId, POWERSTEP01_Registers_t param)
+uint32_t POWERSTEP01::CmdGetParam(uint8_t shieldId, powerstep01_Registers_t param)
 {
   uint32_t i;
   uint32_t spiRxData;
@@ -681,7 +663,7 @@ void POWERSTEP01::CmdNop(uint8_t shieldId)
  * @retval None
  **********************************************************/
 void POWERSTEP01::CmdSetParam(uint8_t shieldId,
-                        POWERSTEP01_Registers_t param,
+                        powerstep01_Registers_t param,
                         uint32_t value)
 {
   uint32_t i;
@@ -780,7 +762,7 @@ void POWERSTEP01::Reset(void)
  * @param[in] stepMod from full step to 1/16 microstep as specified in enum POWERSTEP01_STEP_SEL_t
  * @retval None
  **********************************************************/
-void POWERSTEP01::SelectStepMode(uint8_t shieldId, POWERSTEP01_STEP_SEL_t stepMod)
+void POWERSTEP01::SelectStepMode(uint8_t shieldId, powerstep01_StepSel_t stepMod)
 {
   uint8_t stepModeRegister;
   
@@ -1294,19 +1276,7 @@ void POWERSTEP01::SetRegisterToPredefinedValues(uint8_t shieldId)
   switch (shieldId)
   {
     case 0:
-      CmdSetParam(shieldId,
-                        POWERSTEP01_TVAL,
-                        Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_SHIELD_0));
-      CmdSetParam(shieldId,
-                        POWERSTEP01_T_FAST,
-                        (uint8_t)POWERSTEP01_CONF_PARAM_TOFF_FAST_SHIELD_0 |
-                        (uint8_t)POWERSTEP01_CONF_PARAM_FAST_STEP_SHIELD_0);
-      CmdSetParam(shieldId,
-                        POWERSTEP01_TON_MIN,
-                        Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TON_MIN_SHIELD_0));
-      CmdSetParam(shieldId,
-                        POWERSTEP01_TOFF_MIN,
-                        Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TOFF_MIN_SHIELD_0));
+
       CmdSetParam(shieldId,
                         POWERSTEP01_OCD_TH,
                         POWERSTEP01_CONF_PARAM_OCD_TH_SHIELD_0);
@@ -1326,19 +1296,7 @@ void POWERSTEP01::SetRegisterToPredefinedValues(uint8_t shieldId)
                         (uint16_t)POWERSTEP01_CONF_PARAM_TOFF_SHIELD_0);
       break;
     case 1:
-      CmdSetParam(shieldId,
-                        POWERSTEP01_TVAL,
-                        Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_SHIELD_1));
-      CmdSetParam(shieldId,
-                        POWERSTEP01_T_FAST,
-                        (uint8_t)POWERSTEP01_CONF_PARAM_TOFF_FAST_SHIELD_1 |
-                        (uint8_t)POWERSTEP01_CONF_PARAM_FAST_STEP_SHIELD_1);
-      CmdSetParam(shieldId,
-                        POWERSTEP01_TON_MIN,
-                        Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TON_MIN_SHIELD_1));
-      CmdSetParam(shieldId,
-                        POWERSTEP01_TOFF_MIN,
-                        Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TOFF_MIN_SHIELD_1));
+
       CmdSetParam(shieldId,
                         POWERSTEP01_OCD_TH,
                         POWERSTEP01_CONF_PARAM_OCD_TH_SHIELD_1);
@@ -1358,19 +1316,7 @@ void POWERSTEP01::SetRegisterToPredefinedValues(uint8_t shieldId)
                         (uint16_t)POWERSTEP01_CONF_PARAM_TOFF_SHIELD_1);
       break;
     case 2:
-      CmdSetParam(shieldId,
-                        POWERSTEP01_TVAL,
-                        Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_SHIELD_2));
-      CmdSetParam(shieldId,
-                        POWERSTEP01_T_FAST,
-                        (uint8_t)POWERSTEP01_CONF_PARAM_TOFF_FAST_SHIELD_2 |
-                        (uint8_t)POWERSTEP01_CONF_PARAM_FAST_STEP_SHIELD_2);
-      CmdSetParam(shieldId,
-                        POWERSTEP01_TON_MIN,
-                        Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TON_MIN_SHIELD_2));
-      CmdSetParam(shieldId,
-                        POWERSTEP01_TOFF_MIN,
-                        Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TOFF_MIN_SHIELD_2));
+
       CmdSetParam(shieldId,
                         POWERSTEP01_OCD_TH,
                         POWERSTEP01_CONF_PARAM_OCD_TH_SHIELD_2);
@@ -1690,7 +1636,6 @@ void POWERSTEP01::SetShieldParamsToPredefinedValues(void)
 void POWERSTEP01::StartMovement(uint8_t shieldId)
 {
   /* Enable POWERSTEP01 powerstage */
-  CmdEnable(shieldId);
 
   if (shieldPrm[shieldId].endAccPos != 0)
   {
@@ -1710,26 +1655,7 @@ void POWERSTEP01::StartMovement(uint8_t shieldId)
 #endif        
 }
 
-/******************************************************//**
- * @brief Converts mA in compatible values for TVAL register 
- * @param[in] Tval
- * @retval TVAL values
- **********************************************************/
-inline uint8_t POWERSTEP01::Tval_Current_to_Par(double Tval)
-{
-  return ((uint8_t)(((Tval - 31.25)/31.25)+0.5));
-}
 
-/******************************************************//**
- * @brief Convert time in us in compatible values 
- * for TON_MIN register
- * @param[in] Tmin
- * @retval TON_MIN values
- **********************************************************/
-inline uint8_t POWERSTEP01::Tmin_Time_to_Par(double Tmin)
-{
-  return ((uint8_t)(((Tmin - 0.5)*2)+0.5));
-}
 
 #ifdef _USE_TIMER_0_FOR_POWERSTEP01
 /******************************************************//**

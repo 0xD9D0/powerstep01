@@ -205,7 +205,7 @@ void setup()
   /* Try to read an inexistent register */
   /* the flag interrupt should be raised */
   /* and the MyFlagInterruptHandler function called */
-  PS01.CmdGetParam(0,(POWERSTEP01_Registers_t)0x1F);
+  PS01.CmdGetParam(0,(powerstep01_Registers_t)0x1F);
   delay(500);
 
 //----- Change step mode to full step mode
@@ -280,19 +280,7 @@ void MyFlagInterruptHandler(void)
     // Backward direction is set
   }  
 
-  /* Check NOTPERF_CMD flag: if set, the command received by SPI can't be performed */
-  /* This often occures when a command is sent to the POWERSTEP01 */
-  /* while it is in HIZ state */
-  if ((statusRegister & POWERSTEP01_STATUS_NOTPERF_CMD) == POWERSTEP01_STATUS_NOTPERF_CMD)
-  {
-       // Command received by SPI can't be performed
-  }  
 
-  /* Check WRONG_CMD flag: if set, the command does not exist */
-  if ((statusRegister & POWERSTEP01_STATUS_WRONG_CMD) == POWERSTEP01_STATUS_WRONG_CMD)
-  {
-     //command received by SPI does not exist 
-  }  
 
   /* Check UVLO flag: if not set, there is an undervoltage lock-out */
   if ((statusRegister & POWERSTEP01_STATUS_UVLO) == 0)
@@ -300,17 +288,6 @@ void MyFlagInterruptHandler(void)
      //undervoltage lock-out 
   }  
 
-  /* Check TH_WRN flag: if not set, the thermal warning threshold is reached */
-  if ((statusRegister & POWERSTEP01_STATUS_TH_WRN) == 0)
-  {
-    //thermal warning threshold is reached
-  }    
-
-  /* Check TH_SHD flag: if not set, the thermal shut down threshold is reached */
-  if ((statusRegister & POWERSTEP01_STATUS_TH_SD) == 0)
-  {
-    //thermal shut down threshold is reached * 
-  }    
 
   /* Check OCD  flag: if not set, there is an overcurrent detection */
   if ((statusRegister & POWERSTEP01_STATUS_OCD) == 0)

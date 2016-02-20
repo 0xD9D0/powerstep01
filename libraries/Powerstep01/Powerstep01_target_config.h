@@ -88,17 +88,16 @@
 /******************************* Others ***************************************/
 
 /// Overcurrent threshold settings for shield 0 (OCD_TH register)
-#define POWERSTEP01_CONF_PARAM_OCD_TH_SHIELD_0  (POWERSTEP01_OCD_TH_750mA)
+#define POWERSTEP01_CONF_PARAM_OCD_TH_SHIELD_0  (POWERSTEP01_OCD_TH_750mV)
 /// Overcurrent threshold settings for shield 1 (OCD_TH register)
-#define POWERSTEP01_CONF_PARAM_OCD_TH_SHIELD_1  (POWERSTEP01_OCD_TH_750mA)
+#define POWERSTEP01_CONF_PARAM_OCD_TH_SHIELD_1  (POWERSTEP01_OCD_TH_750mV)
 /// Overcurrent threshold settings for shield 2 (OCD_TH register)
-#define POWERSTEP01_CONF_PARAM_OCD_TH_SHIELD_2  (POWERSTEP01_OCD_TH_750mA)
+#define POWERSTEP01_CONF_PARAM_OCD_TH_SHIELD_2  (POWERSTEP01_OCD_TH_750mV)
 
 /// Alarm settings for shield 0 (ALARM_EN register)
 #define POWERSTEP01_CONF_PARAM_ALARM_EN_SHIELD_0  (POWERSTEP01_ALARM_EN_OVERCURRENT |\
                                                 POWERSTEP01_ALARM_EN_THERMAL_SHUTDOWN |\
                                                 POWERSTEP01_ALARM_EN_THERMAL_WARNING |\
-                                                POWERSTEP01_ALARM_EN_UNDERVOLTAGE |\
                                                 POWERSTEP01_ALARM_EN_SW_TURN_ON |\
                                                 POWERSTEP01_ALARM_EN_WRONG_NPERF_CMD)
 
@@ -106,7 +105,6 @@
 #define POWERSTEP01_CONF_PARAM_ALARM_EN_SHIELD_1  (POWERSTEP01_ALARM_EN_OVERCURRENT |\
                                                 POWERSTEP01_ALARM_EN_THERMAL_SHUTDOWN |\
                                                 POWERSTEP01_ALARM_EN_THERMAL_WARNING |\
-                                                POWERSTEP01_ALARM_EN_UNDERVOLTAGE |\
                                                 POWERSTEP01_ALARM_EN_SW_TURN_ON |\
                                                 POWERSTEP01_ALARM_EN_WRONG_NPERF_CMD)
 
@@ -114,7 +112,6 @@
 #define POWERSTEP01_CONF_PARAM_ALARM_EN_SHIELD_2  (POWERSTEP01_ALARM_EN_OVERCURRENT |\
                                                 POWERSTEP01_ALARM_EN_THERMAL_SHUTDOWN |\
                                                 POWERSTEP01_ALARM_EN_THERMAL_WARNING |\
-                                                POWERSTEP01_ALARM_EN_UNDERVOLTAGE |\
                                                 POWERSTEP01_ALARM_EN_SW_TURN_ON |\
                                                 POWERSTEP01_ALARM_EN_WRONG_NPERF_CMD)
 
@@ -154,11 +151,11 @@
 #define POWERSTEP01_CONF_PARAM_OC_SD_SHIELD_2  (POWERSTEP01_CONFIG_OC_SD_ENABLE)
 
 /// Torque regulation method for shield 0 (EN_TQREG field of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_TQ_REG_SHIELD_0  (POWERSTEP01_CONFIG_EN_TQREG_TVAL_USED)
+#define POWERSTEP01_CONF_PARAM_TQ_REG_SHIELD_0  (POWERSTEP01_CONFIG_TQ_REG_TVAL_USED)
 ///Torque regulation method for shield 1 (EN_TQREG field of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_TQ_REG_SHIELD_1  (POWERSTEP01_CONFIG_EN_TQREG_TVAL_USED)
+#define POWERSTEP01_CONF_PARAM_TQ_REG_SHIELD_1  (POWERSTEP01_CONFIG_TQ_REG_TVAL_USED)
 /// Torque regulation method for shield 2 (EN_TQREG field of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_TQ_REG_SHIELD_2  (POWERSTEP01_CONFIG_EN_TQREG_TVAL_USED)
+#define POWERSTEP01_CONF_PARAM_TQ_REG_SHIELD_2  (POWERSTEP01_CONFIG_TQ_REG_TVAL_USED)
 
 /// Clock setting for shield 0 (OSC_CLK_SEL field of CONFIG register)
 #define POWERSTEP01_CONF_PARAM_CLOCK_SETTING_SHIELD_0  (POWERSTEP01_CONFIG_INT_16MHZ)
