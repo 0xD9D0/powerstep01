@@ -17,8 +17,9 @@
 #include <inttypes.h>
 
 #include "../Powerstep01/Powerstep01_target_config.h"
+#include "../Powerstep01/motor.h"
 
-//To use 3 POWERSTEP01 shield boards you have to ebable this flag
+//To use 3 POWERSTEP01 DEVICE boards you have to ebable this flag
 //but you will no more able to use Arduino functions which
 //are based on timer 0 (delay(), millis()...)
 //#define _USE_TIMER_0_FOR_POWERSTEP01
@@ -93,17 +94,17 @@ extern char POWERSTEP01StrOut[DEBUG_BUFFER_SIZE];
 
 /// Digital Pins used for the POWERSTEP01 flag pin
 #define POWERSTEP01_FLAG_Pin   (2)
-/// Digital Pins used for the POWERSTEP01 step clock pin of shield 0
+/// Digital Pins used for the POWERSTEP01 step clock pin of DEVICE 0
 #define POWERSTEP01_PWM_1_Pin  (9)
-/// Digital Pins used for the POWERSTEP01 step clock pin of shield 1
+/// Digital Pins used for the POWERSTEP01 step clock pin of DEVICE 1
 #define POWERSTEP01_PWM_2_Pin  (3)
-/// Digital Pins used for the POWERSTEP01 step clock pin of shield 2
+/// Digital Pins used for the POWERSTEP01 step clock pin of DEVICE 2
 #define POWERSTEP01_PWM_3_Pin  (6)
-/// Digital Pins used for the POWERSTEP01 direction pin of shield 0
+/// Digital Pins used for the POWERSTEP01 direction pin of DEVICE 0
 #define POWERSTEP01_DIR_1_Pin  (7)
-/// Digital Pins used for the POWERSTEP01 direction pin of shield 1
+/// Digital Pins used for the POWERSTEP01 direction pin of DEVICE 1
 #define POWERSTEP01_DIR_2_Pin  (4)
-/// Digital Pins used for the POWERSTEP01 direction pin of shield 2
+/// Digital Pins used for the POWERSTEP01 direction pin of DEVICE 2
 #define POWERSTEP01_DIR_3_Pin  (5)
 /// Digital Pins used for the POWERSTEP01 reset pin
 #define POWERSTEP01_Reset_Pin  (8)
@@ -782,127 +783,58 @@ typedef enum {
 #define Tmin_Time_to_Par(Tmin) ((uint8_t)(((Tmin - 0.5)*2)+0.5))
 
 
-///  Direction options
-typedef enum {
-  FORWARD = HIGH,
-  BACKWARD = LOW
-} dir_t;
-
-/// Shield state
-typedef enum {
-  ACCELERATING = 0, 
-  DECELERATING = 1, 
-  STEADY = 2,
-  INACTIVE= 3
-} shieldState_t;
-
-/// Shield Commands 
-typedef enum {
-  RUN_CMD, 
-  MOVE_CMD, 
-  SOFT_STOP_CMD, 
-  NO_CMD
-} shieldCommand_t;
-
-/// POWERSTEP01 shield parameters
-typedef struct {
-    /// accumulator used to store speed increase smaller than 1 pps
-    volatile uint32_t accu;           
-    /// Position in steps at the start of the goto or move commands
-    volatile int32_t currentPosition; 
-    /// position in step at the end of the accelerating phase
-    volatile uint32_t endAccPos;      
-    /// nb steps performed from the beggining of the goto or the move command
-    volatile uint32_t relativePos;    
-    /// position in step at the start of the decelerating phase
-    volatile uint32_t startDecPos;    
-    /// nb steps to perform for the goto or move commands
-    volatile uint32_t stepsToTake;   
-    
-    /// acceleration in pps^2
-    volatile uint16_t acceleration;  
-    /// deceleration in pps^2
-    volatile uint16_t deceleration;  
-    /// max speed in pps (speed use for goto or move command)
-    volatile uint16_t maxSpeed;      
-    /// min speed in pps
-    volatile uint16_t minSpeed;      
-    /// current speed in pps    
-    volatile uint16_t speed;         
-    
-    /// command under execution
-    volatile shieldCommand_t commandExecuted; 
-    /// FORWARD or BACKWARD direction
-    volatile dir_t direction;                 
-    /// Current State of the shield
-    volatile shieldState_t motionState;       
-}shieldParams_t;
-
 /// POWERSTEP01 library class
 class POWERSTEP01 {
   public:
     // constructor:
     POWERSTEP01();
     
-    /// @defgroup group1 Shield control functions
+    /// @defgroup group1 DEVICE control functions
     ///@{
     void AttachFlagInterrupt(void (*callback)(void));     //Attach a user callback to the flag Interrupt
-    void Begin(uint8_t nbShields);                        //Start the POWERSTEP01 library
-    uint16_t GetAcceleration(uint8_t shieldId);           //Return the acceleration in pps^2
-    uint16_t GetCurrentSpeed(uint8_t shieldId);           //Return the current speed in pps
-    uint16_t GetDeceleration(uint8_t shieldId);           //Return the deceleration in pps^2
-    shieldState_t GetShieldState(uint8_t shieldId);       //Return the shield state
+    void Begin(uint8_t nbDEVICEs);                        //Start the POWERSTEP01 library
+    uint16_t GetAcceleration(uint8_t DEVICEId);           //Return the acceleration in pps^2
+    uint16_t GetCurrentSpeed(uint8_t DEVICEId);           //Return the current speed in pps
+    uint16_t GetDeceleration(uint8_t DEVICEId);           //Return the deceleration in pps^2
     uint8_t GetFwVersion(void);                           //Return the FW version
-    int32_t GetMark(uint8_t shieldId);                    //Return the mark position 
-    uint16_t GetMaxSpeed(uint8_t shieldId);               //Return the max speed in pps
-    uint16_t GetMinSpeed(uint8_t shieldId);               //Return the min speed in pps
-    int32_t GetPosition(uint8_t shieldId);                //Return the ABS_POSITION (32b signed)
-    void GoHome(uint8_t shieldId);                        //Move to the home position
-    void GoMark(uint8_t shieldId);                        //Move to the Mark position
-    void GoTo(uint8_t shieldId, int32_t targetPosition);  //Go to the specified position
-    void HardStop(uint8_t shieldId);                      //Stop the motor and disable the power bridge
-    void Move(uint8_t shieldId,                           //Move the motor of the specified number of steps
-              dir_t direction,
-              uint32_t stepCount);    
-    void ResetAllShields(void);                              //Reset all POWERSTEP01 shields
-    void Run(uint8_t shieldId, dir_t direction);             //Run the motor 
-    bool SetAcceleration(uint8_t shieldId,uint16_t newAcc);  //Set the acceleration in pps^2
-    bool SetDeceleration(uint8_t shieldId,uint16_t newDec);  //Set the deceleration in pps^2
-    void SetHome(uint8_t shieldId);                          //Set current position to be the home position
-    void SetMark(uint8_t shieldId);                          //Set current position to be the Markposition
-    bool SetMaxSpeed(uint8_t shieldId,uint16_t newMaxSpeed); //Set the max speed in pps
-    bool SetMinSpeed(uint8_t shieldId,uint16_t newMinSpeed); //Set the min speed in pps   
-    bool SoftStop(uint8_t shieldId);                         //Progressively stops the motor 
-    void WaitWhileActive(uint8_t shieldId);                  //Wait for the shield state becomes Inactive
+    int32_t GetMark(uint8_t DEVICEId);                    //Return the mark position
+    uint16_t GetMaxSpeed(uint8_t DEVICEId);               //Return the max speed in pps
+    uint16_t GetMinSpeed(uint8_t DEVICEId);               //Return the min speed in pps
+    int32_t GetPosition(uint8_t DEVICEId);                //Return the ABS_POSITION (32b signed)
+    void CmdGoHome(uint8_t DEVICEId);                        //Move to the home position
+    void CmdGoMark(uint8_t DEVICEId);                        //Move to the Mark position
+    void CmdGoTo(uint8_t DEVICEId, int32_t abs_pos);  //Go to the specified position
+    void CmdHardStop(uint8_t DEVICEId);                      //Stop the motor and disable the power bridge
+    void CmdMove(uint8_t deviceId, motorDir_t direction, uint32_t n_step);
+    void CmdSetHome(uint8_t DEVICEId);                          //Set current position to be the home position
+    void CmdSetMark(uint8_t DEVICEId);                          //Set current position to be the Markposition
+    void CmdSoftStop(uint8_t DEVICEId);                         //Progressively stops the motor
+    void WaitWhileActive(uint8_t DEVICEId);                  //Wait for the DEVICE state becomes Inactive
+    void CmdRun(uint8_t deviceId, motorDir_t direction, uint32_t speed);
     ///@}
     
     /// @defgroup group2 POWERSTEP01 control functions
     ///@{
-    void CmdDisable(uint8_t shieldId);              //Send the POWERSTEP01_DISABLE command
-    void CmdEnable(uint8_t shieldId);               //Send the POWERSTEP01_ENABLE command
-    uint32_t CmdGetParam(uint8_t shieldId,          //Send the POWERSTEP01_GET_PARAM command
+    uint32_t CmdGetParam(uint8_t DEVICEId,          //Send the POWERSTEP01_GET_PARAM command
                                  powerstep01_Registers_t param);
-    uint16_t CmdGetStatus(uint8_t shieldId);        // Send the POWERSTEP01_GET_STATUS command
-    void CmdNop(uint8_t shieldId);                  //Send the POWERSTEP01_NOP command
-    void CmdSetParam(uint8_t shieldId,              //Send the POWERSTEP01_SET_PARAM command
-                             powerstep01_Registers_t param,
+    uint16_t CmdGetStatus(uint8_t DEVICEId);        // Send the POWERSTEP01_GET_STATUS command
+    void CmdNop(uint8_t DEVICEId);                  //Send the POWERSTEP01_NOP command
+    void CmdSetParam(uint8_t deviceId,              //Send the POWERSTEP01_SET_PARAM command
+                             uint32_t param,
                              uint32_t value);
-    uint16_t ReadStatusRegister(uint8_t shieldId);  // Read the POWERSTEP01_STATUS register without
+    uint16_t ReadStatusRegister(uint8_t DEVICEId);  // Read the POWERSTEP01_STATUS register without
                                                     // clearing the flags
     void Reset(void);                               //Set the POWERSTEP01 reset pin
     void ReleaseReset(void);                        //Release the POWERSTEP01 reset pin
-    void SelectStepMode(uint8_t shieldId,           // Step mode selection
-                                powerstep01_StepSel_t stepMod);
-    void SetDirection(uint8_t shieldId,             //Set the POWERSTEP01 direction pin
-                              dir_t direction);      
+    void SelectStepMode(uint8_t deviceId, motorStepMode_t stepMode);
     ///@}
     
     /// @defgroup group3 Delay functions
     ///@{
-    /// @brief Required when 3 POWERSTEP01 shields are used
+    /// @brief Required when 3 POWERSTEP01 DEVICEs are used
     /// to avoid conflicting depencieswith wiring.c 
     /// (redefinition of ISR(TIMER0_OVF_vect).  
-    /// When only 2 POWERSTEP01 shields are used, prefer the use
+    /// When only 2 POWERSTEP01 DEVICEs are used, prefer the use
     /// of standard Arduino functions (delay, delayMicroseconds).
     static void WaitMs(uint16_t msDelay); // Wait for a delay in ms
     static void WaitUs(uint16_t usDelay); // Wait for a delay in us
@@ -913,36 +845,36 @@ class POWERSTEP01 {
     /// Must not be used elsewhere.
     ///@{
     static class POWERSTEP01 *GetInstancePtr(void);
-    void StepClockHandler(uint8_t shieldId); 
     ///@}
     
+
+
   private:
-    void ApplySpeed(uint8_t pwmId, uint16_t newSpeed);
-    void ComputeSpeedProfile(uint8_t shieldId, uint32_t nbSteps);
-    int32_t ConvertPosition(uint32_t abs_position_reg); 
     static void FlagInterruptHandler(void);
-    void SendCommand(uint8_t shieldId, uint8_t param);
-    void SetRegisterToPredefinedValues(uint8_t shieldId);
+    static void BusyInterruptHandler(void);
+
+    void SetRegisterToPredefinedValues(uint8_t deviceId);
     void WriteBytes(uint8_t *pByteToTransmit, uint8_t *pReceivedByte);    
-    void PwmInit(uint8_t pwmId);
-    void Pwm1SetFreq(uint16_t newFreq);
-    void Pwm2SetFreq(uint16_t newFreq);
-    void Pwm3SetFreq(uint16_t newFreq);
-    void PwmStop(uint8_t pwmId);
-    void SetShieldParamsToPredefinedValues(void);
-    void StartMovement(uint8_t shieldId);
     
+    int32_t ConvertPosition(uint32_t abs_position_reg);
+    void ErrorHandler(uint16_t error);
+    void SendCommand(uint8_t DEVICEId, uint8_t param);
+    void SendCommand(uint8_t deviceId, uint8_t param, uint32_t value);
+    void CmdHardHiZ(uint8_t deviceId);
+    void CmdResetPos(uint8_t deviceId);
+    bool IsDeviceBusy(uint8_t deviceId);
     // variable members        
-    shieldParams_t shieldPrm[MAX_NUMBER_OF_SHIELDS];
     static volatile class POWERSTEP01 *instancePtr;
     static volatile void(*flagInterruptCallback)(void);
+    static volatile void(*busyInterruptCallback)(void);
     static volatile bool isrFlag;
     static volatile bool spiPreemtionByIsr;
-    static volatile uint8_t numberOfShields;
-    static const uint16_t prescalerArrayTimer0_1[PRESCALER_ARRAY_TIMER0_1_SIZE];
-    static const uint16_t prescalerArrayTimer2[PRESCALER_ARRAY_TIMER2_SIZE];
-    static uint8_t spiTxBursts[POWERSTEP01_CMD_ARG_MAX_NB_BYTES][MAX_NUMBER_OF_SHIELDS];
-    static uint8_t spiRxBursts[POWERSTEP01_CMD_ARG_MAX_NB_BYTES][MAX_NUMBER_OF_SHIELDS];
+    static volatile uint8_t numberOfDevices;
+    static uint8_t spiTxBursts[POWERSTEP01_CMD_ARG_MAX_NB_BYTES][MAX_NUMBER_OF_DEVICES];
+    static uint8_t spiRxBursts[POWERSTEP01_CMD_ARG_MAX_NB_BYTES][MAX_NUMBER_OF_DEVICES];
+
+    motorDrv_t* Powerstep01_GetMotorHandle(void);                  //Return handle of the motor driver handle
+
 };
 
 #ifdef _DEBUG_POWERSTEP01

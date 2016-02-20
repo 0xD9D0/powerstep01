@@ -18,12 +18,37 @@
 char POWERSTEP01StrOut[DEBUG_BUFFER_SIZE];
 #endif
 
-const uint16_t POWERSTEP01::prescalerArrayTimer0_1[PRESCALER_ARRAY_TIMER0_1_SIZE] = { 0, 1, 8, 64, 256, 1024};
-const uint16_t POWERSTEP01::prescalerArrayTimer2[PRESCALER_ARRAY_TIMER2_SIZE] = {0, 1, 8, 32, 64, 128, 256, 1024};
+
+/** @addtogroup BSP
+  * @{
+  */
+
+/** @addtogroup POWERSTEP01
+  * @{
+  */
+
+/* Private constants ---------------------------------------------------------*/
+
+/** @addtogroup Powerstep01_Private_Constants
+  * @{
+  */
+/// Error while initialising the SPI
+#define POWERSTEP01_ERROR_0   (0x8000)
+/// Error: Bad SPI transaction
+#define POWERSTEP01_ERROR_1   (0x8001)
+
+/**
+  * @}
+  */
+
+
+/// Function pointer to flag interrupt call back
 volatile void (*POWERSTEP01::flagInterruptCallback)(void);
-volatile uint8_t POWERSTEP01::numberOfShields;
-uint8_t POWERSTEP01::spiTxBursts[POWERSTEP01_CMD_ARG_MAX_NB_BYTES][MAX_NUMBER_OF_SHIELDS];
-uint8_t POWERSTEP01::spiRxBursts[POWERSTEP01_CMD_ARG_MAX_NB_BYTES][MAX_NUMBER_OF_SHIELDS];
+/// Function pointer to busy interrupt call back
+volatile void (*POWERSTEP01::busyInterruptCallback)(void);
+volatile uint8_t POWERSTEP01::numberOfDevices;
+uint8_t POWERSTEP01::spiTxBursts[POWERSTEP01_CMD_ARG_MAX_NB_BYTES][MAX_NUMBER_OF_DEVICES];
+uint8_t POWERSTEP01::spiRxBursts[POWERSTEP01_CMD_ARG_MAX_NB_BYTES][MAX_NUMBER_OF_DEVICES];
 volatile bool POWERSTEP01::spiPreemtionByIsr = false;
 volatile bool POWERSTEP01::isrFlag = false;
 volatile class POWERSTEP01* POWERSTEP01::instancePtr = NULL;
@@ -35,13 +60,6 @@ volatile class POWERSTEP01* POWERSTEP01::instancePtr = NULL;
  **********************************************************/ 
 POWERSTEP01::POWERSTEP01()
 {
-  uint8_t i;
-  for (i = 0; i < MAX_NUMBER_OF_SHIELDS; i++)
-  {
-    shieldPrm[i].motionState = INACTIVE;
-    shieldPrm[i].commandExecuted = NO_CMD;
-    shieldPrm[i].stepsToTake = MAX_STEPS;
-  }
     instancePtr = this;
 }
 
@@ -62,12 +80,12 @@ void POWERSTEP01::AttachFlagInterrupt(void (*callback)(void))
 
 /******************************************************//**
  * @brief Starts the POWERSTEP01 library
- * @param[in] nbShields Number of POWERSTEP01 shields to use (from 1 to 3)
+ * @param[in] nbDEVICEs Number of POWERSTEP01 DEVICEs to use (from 1 to 3)
  * @retval None
  **********************************************************/
-void POWERSTEP01::Begin(uint8_t nbShields)
+void POWERSTEP01::Begin(uint8_t nbDEVICEs)
 {
-  numberOfShields = nbShields;
+  numberOfDevices = nbDEVICEs;
   
   // start the SPI library:
   SPI.begin();
@@ -82,32 +100,13 @@ void POWERSTEP01::Begin(uint8_t nbShields)
   //reset pin
   pinMode(POWERSTEP01_Reset_Pin, OUTPUT);
   
-  switch (nbShields)
-  {
-    case 3:
-      pinMode(POWERSTEP01_DIR_3_Pin, OUTPUT);
-      pinMode(POWERSTEP01_PWM_3_Pin, OUTPUT);
-      PwmInit(2);
-    case 2:
-      pinMode(POWERSTEP01_DIR_2_Pin, OUTPUT);
-      pinMode(POWERSTEP01_PWM_2_Pin, OUTPUT);
-      PwmInit(1);
-    case 1:
-      pinMode(POWERSTEP01_DIR_1_Pin, OUTPUT);
-      pinMode(POWERSTEP01_PWM_1_Pin, OUTPUT);
-      PwmInit(0);
-    default:
-      ;
-  }
   
   /* Standby-reset deactivation */
   ReleaseReset();
   
-  /* Set all registers and context variables to the predefined values from POWERSTEP01_target_config.h */
-  SetShieldParamsToPredefinedValues();
   
   /* Disable POWERSTEP01 powerstage */
-  for (uint32_t i = 0; i < nbShields; i++)
+  for (uint32_t i = 0; i < nbDEVICEs; i++)
   {
 
     /* Get Status to clear flags after start up */
@@ -115,35 +114,7 @@ void POWERSTEP01::Begin(uint8_t nbShields)
   }
 }
 
-/******************************************************//**
- * @brief Returns the acceleration of the specified shield
- * @param[in] shieldId (from 0 to 2)
- * @retval Acceleration in pps^2
- **********************************************************/
-uint16_t POWERSTEP01::GetAcceleration(uint8_t shieldId)
-{                                                  
-  return (shieldPrm[shieldId].acceleration);
-}            
 
-/******************************************************//**
- * @brief Returns the current speed of the specified shield
- * @param[in] shieldId (from 0 to 2)
- * @retval Speed in pps
- **********************************************************/
-uint16_t POWERSTEP01::GetCurrentSpeed(uint8_t shieldId)
-{
-  return shieldPrm[shieldId].speed;
-}
-
-/******************************************************//**
- * @brief Returns the deceleration of the specified shield
- * @param[in] shieldId (from 0 to 2)
- * @retval Deceleration in pps^2
- **********************************************************/
-uint16_t POWERSTEP01::GetDeceleration(uint8_t shieldId)
-{                                                  
-  return (shieldPrm[shieldId].deceleration);
-}          
 
 /******************************************************//**
  * @brief Returns the FW version of the library
@@ -156,378 +127,174 @@ uint8_t POWERSTEP01::GetFwVersion(void)
 }
 
 /******************************************************//**
- * @brief  Returns the mark position  of the specified shield
- * @param[in] shieldId (from 0 to 2)
+ * @brief  Returns the mark position  of the specified DEVICE
+ * @param[in] DEVICEId (from 0 to 2)
  * @retval Mark register value converted in a 32b signed integer 
  **********************************************************/
-int32_t POWERSTEP01::GetMark(uint8_t shieldId)
+int32_t POWERSTEP01::GetMark(uint8_t DEVICEId)
 {
-  return ConvertPosition(CmdGetParam(shieldId,POWERSTEP01_MARK));
+  return ConvertPosition(CmdGetParam(DEVICEId,POWERSTEP01_MARK));
 }
 
-/******************************************************//**
- * @brief  Returns the max speed of the specified shield
- * @param[in] shieldId (from 0 to 2)
- * @retval maxSpeed in pps
- **********************************************************/
-uint16_t POWERSTEP01::GetMaxSpeed(uint8_t shieldId)
-{                                                  
-  return (shieldPrm[shieldId].maxSpeed);
-}                                                     
+
 
 /******************************************************//**
- * @brief  Returns the min speed of the specified shield
- * @param[in] shieldId (from 0 to 2)
- * @retval minSpeed in pps
- **********************************************************/
-uint16_t POWERSTEP01::GetMinSpeed(uint8_t shieldId)
-{                                                  
-  return (shieldPrm[shieldId].minSpeed);
-}                                                     
-
-/******************************************************//**
- * @brief  Returns the ABS_POSITION of the specified shield
- * @param[in] shieldId (from 0 to 2)
+ * @brief  Returns the ABS_POSITION of the specified DEVICE
+ * @param[in] DEVICEId (from 0 to 2)
  * @retval ABS_POSITION register value converted in a 32b signed integer
  **********************************************************/
-int32_t POWERSTEP01::GetPosition(uint8_t shieldId)
+int32_t POWERSTEP01::GetPosition(uint8_t DEVICEId)
 {
-  return ConvertPosition(CmdGetParam(shieldId,POWERSTEP01_ABS_POS));
+  return ConvertPosition(CmdGetParam(DEVICEId,POWERSTEP01_ABS_POS));
 }
 
-/******************************************************//**
- * @brief Returns the shield state
- * @param[in] shieldId (from 0 to 2)
- * @retval State (ACCELERATING, DECELERATING, STEADY or INACTIVE)
- **********************************************************/
-shieldState_t POWERSTEP01::GetShieldState(uint8_t shieldId)
-{
-  return shieldPrm[shieldId].motionState;
-}
 
 /******************************************************//**
  * @brief  Requests the motor to move to the home position (ABS_POSITION = 0)
- * @param[in] shieldId (from 0 to 2)
+ * @param[in] DEVICEId (from 0 to 2)
  * @retval None
  **********************************************************/
-void POWERSTEP01::GoHome(uint8_t shieldId)
+void POWERSTEP01::CmdGoHome(uint8_t deviceId)
 {
-  GoTo(shieldId, 0);
+	   SendCommand(deviceId, POWERSTEP01_GO_HOME, 0);
 } 
   
 /******************************************************//**
  * @brief  Requests the motor to move to the mark position 
- * @param[in] shieldId (from 0 to 2)
+ * @param[in] DEVICEId (from 0 to 2)
  * @retval None
  **********************************************************/
-void POWERSTEP01::GoMark(uint8_t shieldId)
+void POWERSTEP01::CmdGoMark(uint8_t deviceId)
 {
-	uint32_t mark;
-
-	mark = ConvertPosition(CmdGetParam(shieldId,POWERSTEP01_MARK));
-	GoTo(shieldId,mark);  
+  SendCommand(deviceId, POWERSTEP01_GO_MARK, 0);
 }
 
 /******************************************************//**
  * @brief  Requests the motor to move to the specified position 
- * @param[in] shieldId (from 0 to 2)
+ * @param[in] DEVICEId (from 0 to 2)
  * @param[in] targetPosition absolute position in steps
  * @retval None
  **********************************************************/
-void POWERSTEP01::GoTo(uint8_t shieldId, int32_t targetPosition)
+void POWERSTEP01::CmdGoTo(uint8_t deviceId, int32_t abs_pos)
 {
-  dir_t direction;
-  int32_t steps;
-  
-  /* Eventually deactivate motor */
-  if (shieldPrm[shieldId].motionState != INACTIVE) 
-  {
-    HardStop(shieldId);
-  }
-
-  /* Get current position */
-  shieldPrm[shieldId].currentPosition = ConvertPosition(CmdGetParam(shieldId,POWERSTEP01_ABS_POS));
-  
-  /* Compute the number of steps to perform */
-  steps = targetPosition - shieldPrm[shieldId].currentPosition;
-  
-  if (steps >= 0) 
-  {
-    shieldPrm[shieldId].stepsToTake = steps;
-    direction = FORWARD;
-    
-  } 
-  else 
-  {
-    shieldPrm[shieldId].stepsToTake = -steps;
-    direction = BACKWARD;
-  }
-  
-  if (steps != 0) 
-  {
-    
-    shieldPrm[shieldId].commandExecuted = MOVE_CMD;
-        
-    /* Direction setup */
-    SetDirection(shieldId,direction);
-
-    ComputeSpeedProfile(shieldId, shieldPrm[shieldId].stepsToTake);
-    
-    /* Motor activation */
-    StartMovement(shieldId);
-  }  
+  SendCommand(deviceId, POWERSTEP01_GO_TO, abs_pos);
 }
 
 /******************************************************//**
  * @brief  Immediatly stops the motor and disable the power bridge
- * @param[in] shieldId (from 0 to 2)
+ * @param[in] DEVICEId (from 0 to 2)
  * @retval None
  **********************************************************/
-void POWERSTEP01::HardStop(uint8_t shieldId)
+void POWERSTEP01::CmdHardStop(uint8_t deviceId)
 {
-  /* Disable corresponding PWM */
-  PwmStop(shieldId);
+	SendCommand(deviceId, POWERSTEP01_HARD_STOP, 0);
 
-  /* Disable power stage */
-
-
-  /* Set inactive state */
-  shieldPrm[shieldId].motionState = INACTIVE;
-  shieldPrm[shieldId].commandExecuted = NO_CMD;
-  shieldPrm[shieldId].stepsToTake = MAX_STEPS;  
-
-#ifdef _DEBUG_POWERSTEP01
- Serial.println("Inactive\n");
-#endif     
 }
 
 /******************************************************//**
  * @brief  Moves the motor of the specified number of steps
- * @param[in] shieldId (from 0 to 2)
+ * @param[in] DEVICEId (from 0 to 2)
  * @param[in] direction FORWARD or BACKWARD
  * @param[in] stepCount Number of steps to perform
  * @retval None
  **********************************************************/
-void POWERSTEP01::Move(uint8_t shieldId, dir_t direction, uint32_t stepCount)
+void POWERSTEP01::CmdMove(uint8_t deviceId, motorDir_t direction, uint32_t n_step)
 {
-  /* Eventually deactivate motor */
-  if (shieldPrm[shieldId].motionState != INACTIVE) 
-  {
-    HardStop(shieldId);
-  }
-  
-  if (stepCount != 0) 
-  {
-    shieldPrm[shieldId].stepsToTake = stepCount;
-    
-    shieldPrm[shieldId].commandExecuted = MOVE_CMD;
-    
-    shieldPrm[shieldId].currentPosition = ConvertPosition(CmdGetParam(shieldId,POWERSTEP01_ABS_POS));
-    
-    /* Direction setup */
-    SetDirection(shieldId,direction);
-
-    ComputeSpeedProfile(shieldId, stepCount);
-    
-    /* Motor activation */
-    StartMovement(shieldId);
-  }  
+  SendCommand(deviceId,
+                          (uint8_t)POWERSTEP01_MOVE |
+                          (uint8_t)direction, n_step);
 }
 
+
 /******************************************************//**
- * @brief Resets all POWERSTEP01 shields
- * @param None
+ * @brief Issues PowerStep01 Run command
+ * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
+ * @param[in] direction Movement direction (FORWARD, BACKWARD)
+ * @param[in] speed in steps/s
  * @retval None
- **********************************************************/
-void POWERSTEP01::ResetAllShields(void)
+ *********************************************************/
+void POWERSTEP01::CmdRun(uint8_t deviceId, motorDir_t direction, uint32_t speed)
 {
- 	uint8_t loop;
- 	
- 	for (loop = 0; loop < numberOfShields; loop++)
- 	{
-   	/* Stop movement and disable power stage*/
-  	HardStop(loop);
-  }
-	Reset();
-	WaitUs(20); // Reset pin must be forced low for at least 10us
-	ReleaseReset();
+  SendCommand(deviceId, (uint8_t)POWERSTEP01_RUN | (uint8_t)direction, speed);
 }
 
-/******************************************************//**
- * @brief  Runs the motor. It will accelerate from the min 
- * speed up to the max speed by using the shield acceleration.
- * @param[in] shieldId (from 0 to 2)
- * @param[in] direction FORWARD or BACKWARD
- * @retval None
- **********************************************************/
-void POWERSTEP01::Run(uint8_t shieldId, dir_t direction)
-{
-  /* Eventually deactivate motor */
-  if (shieldPrm[shieldId].motionState != INACTIVE) 
-  {
-    HardStop(shieldId);
-  }
-  
-	/* Direction setup */
-	SetDirection(shieldId,direction);
 
-	shieldPrm[shieldId].commandExecuted = RUN_CMD;
 
-	/* Motor activation */
-	StartMovement(shieldId); 
-}
-
-/******************************************************//**
- * @brief  Changes the acceleration of the specified shield
- * @param[in] shieldId (from 0 to 2)
- * @param[in] newAcc New acceleration to apply in pps^2
- * @retval true if the command is successfully executed, else false
- * @note The command is not performed is the shield is executing 
- * a MOVE or GOTO command (but it can be used during a RUN command)
- **********************************************************/
-bool POWERSTEP01::SetAcceleration(uint8_t shieldId,uint16_t newAcc)
-{                                                  
-  bool cmdExecuted = false;
-  if ((newAcc != 0)&&
-      ((shieldPrm[shieldId].motionState == INACTIVE)||
-       (shieldPrm[shieldId].commandExecuted == RUN_CMD)))
-  {
-    shieldPrm[shieldId].acceleration = newAcc;
-    cmdExecuted = true;
-  }    
-  return cmdExecuted;
-}            
-
-/******************************************************//**
- * @brief  Changes the deceleration of the specified shield
- * @param[in] shieldId (from 0 to 2)
- * @param[in] newDec New deceleration to apply in pps^2
- * @retval true if the command is successfully executed, else false
- * @note The command is not performed is the shield is executing 
- * a MOVE or GOTO command (but it can be used during a RUN command)
- **********************************************************/
-bool POWERSTEP01::SetDeceleration(uint8_t shieldId, uint16_t newDec)
-{                                                  
-  bool cmdExecuted = false;
-  if ((newDec != 0)&& 
-      ((shieldPrm[shieldId].motionState == INACTIVE)||
-       (shieldPrm[shieldId].commandExecuted == RUN_CMD)))
-  {
-    shieldPrm[shieldId].deceleration = newDec;
-    cmdExecuted = true;
-  }      
-  return cmdExecuted;
-}        
 
 /******************************************************//**
  * @brief  Set current position to be the Home position (ABS pos set to 0)
- * @param[in] shieldId (from 0 to 2)
+ * @param[in] DEVICEId (from 0 to 2)
  * @retval None
  **********************************************************/
-void POWERSTEP01::SetHome(uint8_t shieldId)
+void POWERSTEP01::CmdSetHome(uint8_t DEVICEId)
 {
-  CmdSetParam(shieldId, POWERSTEP01_ABS_POS, 0);
+  CmdSetParam(DEVICEId, POWERSTEP01_ABS_POS, 0);
 }
  
 /******************************************************//**
  * @brief  Sets current position to be the Mark position 
- * @param[in] shieldId (from 0 to 2)
+ * @param[in] DEVICEId (from 0 to 2)
  * @retval None
  **********************************************************/
-void POWERSTEP01::SetMark(uint8_t shieldId)
+void POWERSTEP01::CmdSetMark(uint8_t DEVICEId)
 {
-  uint32_t mark = CmdGetParam(shieldId,POWERSTEP01_ABS_POS);
-  CmdSetParam(shieldId,POWERSTEP01_MARK, mark);
+  uint32_t mark = CmdGetParam(DEVICEId,POWERSTEP01_ABS_POS);
+  CmdSetParam(DEVICEId,POWERSTEP01_MARK, mark);
+}
+
+
+
+/******************************************************//**
+ * @brief Issues PowerStep01 Soft Stop command
+ * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
+ * @retval None
+ *********************************************************/
+void POWERSTEP01::CmdSoftStop(uint8_t deviceId)
+{
+  SendCommand(deviceId, POWERSTEP01_SOFT_STOP, 0);
 }
 
 /******************************************************//**
- * @brief  Changes the max speed of the specified shield
- * @param[in] shieldId (from 0 to 2)
- * @param[in] newMaxSpeed New max speed  to apply in pps
- * @retval true if the command is successfully executed, else false
- * @note The command is not performed is the shield is executing 
- * a MOVE or GOTO command (but it can be used during a RUN command).
- **********************************************************/
-bool POWERSTEP01::SetMaxSpeed(uint8_t shieldId, uint16_t newMaxSpeed)
-{                                                  
-  bool cmdExecuted = false;
-  if ((newMaxSpeed > POWERSTEP01_MIN_PWM_FREQ)&&
-      (newMaxSpeed <= POWERSTEP01_MAX_PWM_FREQ) &&
-      (shieldPrm[shieldId].minSpeed <= newMaxSpeed) &&
-      ((shieldPrm[shieldId].motionState == INACTIVE)||
-       (shieldPrm[shieldId].commandExecuted == RUN_CMD)))
-  {
-    shieldPrm[shieldId].maxSpeed = newMaxSpeed;
-    cmdExecuted = true;
-  }
-  return cmdExecuted;
-}                                                     
-
-/******************************************************//**
- * @brief  Changes the min speed of the specified shield
- * @param[in] shieldId (from 0 to 2)
- * @param[in] newMinSpeed New min speed  to apply in pps
- * @retval true if the command is successfully executed, else false
- * @note The command is not performed is the shield is executing 
- * a MOVE or GOTO command (but it can be used during a RUN command).
- **********************************************************/
-bool POWERSTEP01::SetMinSpeed(uint8_t shieldId, uint16_t newMinSpeed)
-{                                                  
-  bool cmdExecuted = false;
-  if ((newMinSpeed >= POWERSTEP01_MIN_PWM_FREQ)&&
-      (newMinSpeed < POWERSTEP01_MAX_PWM_FREQ) &&
-      (newMinSpeed <= shieldPrm[shieldId].maxSpeed) && 
-      ((shieldPrm[shieldId].motionState == INACTIVE)||
-       (shieldPrm[shieldId].commandExecuted == RUN_CMD)))
-  {
-    shieldPrm[shieldId].minSpeed = newMinSpeed;
-    cmdExecuted = true;
-  }  
-  return cmdExecuted;
-}                 
-
-/******************************************************//**
- * @brief  Stops the motor by using the shield deceleration
- * @param[in] shieldId (from 0 to 2)
- * @retval true if the command is successfully executed, else false
- * @note The command is not performed is the shield is in INACTIVE state.
- **********************************************************/
-bool POWERSTEP01::SoftStop(uint8_t shieldId)
-{	
-  bool cmdExecuted = false;
-  if (shieldPrm[shieldId].motionState != INACTIVE)
-  {
-    shieldPrm[shieldId].commandExecuted = SOFT_STOP_CMD;
-    cmdExecuted = true;
-  }
-  return (cmdExecuted);
-}
-
-/******************************************************//**
- * @brief  Locks until the shield state becomes Inactive
- * @param[in] shieldId (from 0 to 2)
+ * @brief  Locks until the DEVICE state becomes Inactive
+ * @param[in] DEVICEId (from 0 to 2)
  * @retval None
  **********************************************************/
-void POWERSTEP01::WaitWhileActive(uint8_t shieldId)
- {
+void POWERSTEP01::WaitWhileActive(uint8_t deviceId)
+{
 	/* Wait while motor is running */
-	while (GetShieldState(shieldId) != INACTIVE);
+	while (IsDeviceBusy(deviceId) != 0);
 }
 
-
+/******************************************************//**
+ * @brief Checks if the specified device is busy
+ * by reading the Busy flag bit ot its status Register
+ * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
+ * @retval true if device is busy, false zero
+ *********************************************************/
+bool POWERSTEP01::IsDeviceBusy(uint8_t deviceId)
+{
+  if(!(CmdGetStatus(deviceId) & POWERSTEP01_STATUS_BUSY))
+  {
+    return TRUE;
+  }
+  else
+  {
+    return FALSE;
+  }
+}
 
 /******************************************************//**
- * @brief  Issues the GetParam command to the POWERSTEP01 of the specified shield
- * @param[in] shieldId (from 0 to 2)
+ * @brief  Issues the GetParam command to the POWERSTEP01 of the specified DEVICE
+ * @param[in] DEVICEId (from 0 to 2)
  * @param[in] param Register adress (POWERSTEP01_ABS_POS, POWERSTEP01_MARK,...)
  * @retval Register value
  **********************************************************/
-uint32_t POWERSTEP01::CmdGetParam(uint8_t shieldId, powerstep01_Registers_t param)
+uint32_t POWERSTEP01::CmdGetParam(uint8_t DEVICEId, powerstep01_Registers_t param)
 {
   uint32_t i;
   uint32_t spiRxData;
   uint8_t maxArgumentNbBytes = 0;
-  uint8_t spiIndex = numberOfShields - shieldId - 1;
+  uint8_t spiIndex = numberOfDevices - DEVICEId - 1;
   bool itDisable = false;  
   
   do
@@ -540,7 +307,7 @@ uint32_t POWERSTEP01::CmdGetParam(uint8_t shieldId, powerstep01_Registers_t para
       itDisable = false;
     }
   
-    for (i = 0; i < numberOfShields; i++)
+    for (i = 0; i < numberOfDevices; i++)
     {
       spiTxBursts[0][i] = POWERSTEP01_NOP;
       spiTxBursts[1][i] = POWERSTEP01_NOP;
@@ -593,18 +360,18 @@ uint32_t POWERSTEP01::CmdGetParam(uint8_t shieldId, powerstep01_Registers_t para
 }
 
 /******************************************************//**
- * @brief  Issues the GetStatus command to the POWERSTEP01 of the specified shield
- * @param[in] shieldId (from 0 to 2)
+ * @brief  Issues the GetStatus command to the POWERSTEP01 of the specified DEVICE
+ * @param[in] DEVICEId (from 0 to 2)
  * @retval Status Register value
  * @note Once the GetStatus command is performed, the flags of the status register
  * are reset. This is not the case when the status register is read with the
  * GetParam command (via the functions ReadStatusRegister or CmdGetParam).
  **********************************************************/
-uint16_t POWERSTEP01::CmdGetStatus(uint8_t shieldId)
+uint16_t POWERSTEP01::CmdGetStatus(uint8_t DEVICEId)
 {
   uint32_t i;
   uint16_t status;
-  uint8_t spiIndex = numberOfShields - shieldId - 1;
+  uint8_t spiIndex = numberOfDevices - DEVICEId - 1;
   bool itDisable = false;  
   
   do
@@ -617,7 +384,7 @@ uint16_t POWERSTEP01::CmdGetStatus(uint8_t shieldId)
       itDisable = false;
     }
 
-    for (i = 0; i < numberOfShields; i++)
+    for (i = 0; i < numberOfDevices; i++)
     {
        spiTxBursts[0][i] = POWERSTEP01_NOP;
        spiTxBursts[1][i] = POWERSTEP01_NOP;
@@ -646,29 +413,29 @@ uint16_t POWERSTEP01::CmdGetStatus(uint8_t shieldId)
 }
 
 /******************************************************//**
- * @brief  Issues the Nop command to the POWERSTEP01 of the specified shield
- * @param[in] shieldId (from 0 to 2)
+ * @brief  Issues the Nop command to the POWERSTEP01 of the specified DEVICE
+ * @param[in] DEVICEId (from 0 to 2)
  * @retval None
  **********************************************************/
-void POWERSTEP01::CmdNop(uint8_t shieldId)
+void POWERSTEP01::CmdNop(uint8_t DEVICEId)
 {
-  SendCommand(shieldId, POWERSTEP01_NOP);
+  SendCommand(DEVICEId, POWERSTEP01_NOP);
 }
 
 /******************************************************//**
- * @brief  Issues the SetParam command to the POWERSTEP01 of the specified shield
- * @param[in] shieldId (from 0 to 2)
+ * @brief  Issues the SetParam command to the POWERSTEP01 of the specified DEVICE
+ * @param[in] DEVICEId (from 0 to 2)
  * @param[in] param Register adress (POWERSTEP01_ABS_POS, POWERSTEP01_MARK,...)
  * @param[in] value Value to set in the register
  * @retval None
  **********************************************************/
-void POWERSTEP01::CmdSetParam(uint8_t shieldId,
-                        powerstep01_Registers_t param,
+void POWERSTEP01::CmdSetParam(uint8_t DEVICEId,
+                        uint32_t param,
                         uint32_t value)
 {
   uint32_t i;
   uint8_t maxArgumentNbBytes = 0;
-  uint8_t spiIndex = numberOfShields - shieldId - 1;
+  uint8_t spiIndex = numberOfDevices - DEVICEId - 1;
   bool itDisable = false;  
   do
   {
@@ -679,7 +446,7 @@ void POWERSTEP01::CmdSetParam(uint8_t shieldId,
       interrupts();
       itDisable = false;
     }
-    for (i = 0; i < numberOfShields; i++)
+    for (i = 0; i < numberOfDevices; i++)
     {
       spiTxBursts[0][i] = POWERSTEP01_NOP;
       spiTxBursts[1][i] = POWERSTEP01_NOP;
@@ -690,19 +457,26 @@ void POWERSTEP01::CmdSetParam(uint8_t shieldId,
   {
     case POWERSTEP01_ABS_POS: ;
     case POWERSTEP01_MARK:
-        spiTxBursts[0][spiIndex] = param;
+        spiTxBursts[0][spiIndex] = ((uint8_t)POWERSTEP01_SET_PARAM )| (param);
         spiTxBursts[1][spiIndex] = (uint8_t)(value >> 16);
         spiTxBursts[2][spiIndex] = (uint8_t)(value >> 8);
         maxArgumentNbBytes = 3;
         break;
-    case POWERSTEP01_EL_POS: ;
+    case POWERSTEP01_EL_POS:
+    case POWERSTEP01_ACC:
+    case POWERSTEP01_DEC:
+    case POWERSTEP01_MAX_SPEED:
+    case POWERSTEP01_MIN_SPEED:
+    case POWERSTEP01_FS_SPD:
+    case POWERSTEP01_INT_SPD:
     case POWERSTEP01_CONFIG:
-        spiTxBursts[1][spiIndex] = param;
-        spiTxBursts[2][spiIndex] = (uint8_t)(value >> 8);
-        maxArgumentNbBytes = 2;
-        break;
+    case POWERSTEP01_GATECFG1:
+       spiTxBursts[1][spiIndex] = ((uint8_t)POWERSTEP01_SET_PARAM )| (param);
+       spiTxBursts[2][spiIndex] = (uint8_t)(value >> 8);
+       maxArgumentNbBytes = 2;
+       break;
     default:
-        spiTxBursts[2][spiIndex] = param;
+        spiTxBursts[2][spiIndex] = ((uint8_t)POWERSTEP01_SET_PARAM )| (param);
         maxArgumentNbBytes = 1;
     }
     spiTxBursts[3][spiIndex] = (uint8_t)(value);
@@ -726,18 +500,18 @@ void POWERSTEP01::CmdSetParam(uint8_t shieldId,
 
 /******************************************************//**
  * @brief  Reads the Status Register value
- * @param[in] shieldId (from 0 to 2)
+ * @param[in] DEVICEId (from 0 to 2)
  * @retval Status register valued
  * @note The status register flags are not cleared 
  * at the difference with CmdGetStatus()
  **********************************************************/
-uint16_t POWERSTEP01::ReadStatusRegister(uint8_t shieldId)
+uint16_t POWERSTEP01::ReadStatusRegister(uint8_t DEVICEId)
 {
-  return (CmdGetParam(shieldId,POWERSTEP01_STATUS));
+  return (CmdGetParam(DEVICEId,POWERSTEP01_STATUS));
 }
 
 /******************************************************//**
- * @brief  Releases the POWERSTEP01 reset (pin set to High) of all shields
+ * @brief  Releases the POWERSTEP01 reset (pin set to High) of all DEVICEs
  * @param  None
  * @retval None
  **********************************************************/
@@ -747,7 +521,7 @@ void POWERSTEP01::ReleaseReset(void)
 }
 
 /******************************************************//**
- * @brief  Resets the POWERSTEP01 (reset pin set to low) of all shields
+ * @brief  Resets the POWERSTEP01 (reset pin set to low) of all DEVICEs
  * @param  None
  * @retval None
  **********************************************************/
@@ -758,68 +532,83 @@ void POWERSTEP01::Reset(void)
 
 /******************************************************//**
  * @brief  Set the stepping mode 
- * @param[in] shieldId (from 0 to 2)
+ * @param[in] DEVICEId (from 0 to 2)
  * @param[in] stepMod from full step to 1/16 microstep as specified in enum POWERSTEP01_STEP_SEL_t
  * @retval None
  **********************************************************/
-void POWERSTEP01::SelectStepMode(uint8_t shieldId, powerstep01_StepSel_t stepMod)
+void POWERSTEP01::SelectStepMode(uint8_t deviceId, motorStepMode_t stepMode)
 {
   uint8_t stepModeRegister;
+  powerstep01_StepSel_t powerstep01StepMode;
   
-  /* Eventually deactivate motor */
-  if (shieldPrm[shieldId].motionState != INACTIVE) 
+  switch (stepMode)
   {
-    HardStop(shieldId);
+    case STEP_MODE_FULL:
+      powerstep01StepMode = POWERSTEP01_STEP_SEL_1;
+      break;
+    case STEP_MODE_HALF:
+      powerstep01StepMode = POWERSTEP01_STEP_SEL_1_2;
+      break;
+    case STEP_MODE_1_4:
+      powerstep01StepMode = POWERSTEP01_STEP_SEL_1_4;
+      break;
+    case STEP_MODE_1_8:
+      powerstep01StepMode = POWERSTEP01_STEP_SEL_1_8;
+      break;
+    case STEP_MODE_1_16:
+      powerstep01StepMode = POWERSTEP01_STEP_SEL_1_16;
+      break;
+    case STEP_MODE_1_32:
+      powerstep01StepMode = POWERSTEP01_STEP_SEL_1_32;
+      break;
+    case STEP_MODE_1_64:
+      powerstep01StepMode = POWERSTEP01_STEP_SEL_1_64;
+      break;
+    case STEP_MODE_1_128:
+    default:
+      powerstep01StepMode = POWERSTEP01_STEP_SEL_1_128;
+      break;
   }
   
+  /* Set the powerstep01 in HiZ state */
+  CmdHardHiZ(deviceId);
+
   /* Read Step mode register and clear STEP_SEL field */
-  stepModeRegister = (uint8_t)(0xF8 & CmdGetParam(shieldId,POWERSTEP01_STEP_MODE)) ;
+  stepModeRegister = (uint8_t)(0xF8 & CmdGetParam(deviceId,POWERSTEP01_STEP_MODE)) ;
   
   /* Apply new step mode */
-  CmdSetParam(shieldId, POWERSTEP01_STEP_MODE, stepModeRegister | (uint8_t)stepMod);
+  CmdSetParam(deviceId, POWERSTEP01_STEP_MODE, stepModeRegister | (uint8_t)powerstep01StepMode);
 
   /* Reset abs pos register */
-  SetHome(shieldId);
+  CmdResetPos(deviceId);
 }
 
 /******************************************************//**
- * @brief  Specifies the direction 
- * @param[in] shieldId (from 0 to 2)
- * @param[in] dir FORWARD or BACKWARD
- * @note The direction change is only applied if the shield 
- * is in INACTIVE state
+ * @brief Issues PowerStep01 Hard HiZ command
+ * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
  * @retval None
- **********************************************************/
-void POWERSTEP01::SetDirection(uint8_t shieldId, dir_t dir)
+ *********************************************************/
+void POWERSTEP01::CmdHardHiZ(uint8_t deviceId)
 {
-  if (shieldPrm[shieldId].motionState == INACTIVE)
-  {
-    shieldPrm[shieldId].direction = dir;
-    
-    switch (shieldId)
-    {
-      case 2:
-        digitalWrite(POWERSTEP01_DIR_3_Pin, dir);
-        break;
-      case 1:
-        digitalWrite(POWERSTEP01_DIR_2_Pin, dir);
-        break;
-      case 0:
-        digitalWrite(POWERSTEP01_DIR_1_Pin, dir);
-        break;
-      default:
-        ;
-    }
-  }
+  SendCommand(deviceId, POWERSTEP01_HARD_HIZ, 0);
 }
-
+/******************************************************//**
+ * @brief Issues PowerStep01 Reset Pos command
+ * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
+ * @retval None
+ *********************************************************/
+void POWERSTEP01::CmdResetPos(uint8_t deviceId)
+{
+  SendCommand(deviceId, POWERSTEP01_RESET_POS, 0);
+}
 /******************************************************//**
  * @brief  Waits for the specify delay in milliseconds
  * @param[in] msDelay delay in milliseconds
  * @retval None
- * @note Should only be used for 3 shields configuration.
+ * @note Should only be used for 3 DEVICEs configuration.
  * Else, prefer the standard Arduino function delay().
  **********************************************************/
+
 void POWERSTEP01::WaitMs(uint16_t msDelay)
 {
   uint16_t i;
@@ -833,7 +622,7 @@ void POWERSTEP01::WaitMs(uint16_t msDelay)
  * @brief  Waits for the specify delay in microseconds
  * @param[in] usDelay delay in microseconds
  * @retval None
- * @note Should be only used for 3 shields configuration.
+ * @note Should be only used for 3 DEVICEs configuration.
  * Else, prefer the standard Arduino function delayMicroseconds().
  * Besides, this function is a copy of delayMicroseconds inside
  * the POWERSTEP01 library to avoid dependencies conflicts
@@ -916,262 +705,8 @@ class POWERSTEP01* POWERSTEP01::GetInstancePtr(void)
   return (class POWERSTEP01*)instancePtr;
 }
 
-/******************************************************//**
- * @brief  Handles the shield state machine at each ste
- * @param[in] shieldId (from 0 to 2)
- * @retval None
- * @note Must only be called by the timer ISR
- **********************************************************/
-void POWERSTEP01::StepClockHandler(uint8_t shieldId)
-{
-  /* Set isr flag */
-  isrFlag = true;
-  
-  /* Incrementation of the relative position */
-  shieldPrm[shieldId].relativePos++;
-  
-  /* Periodically check that estimated position is correct */
-  if ((shieldPrm[shieldId].commandExecuted != RUN_CMD) && 
-      ((shieldPrm[shieldId].relativePos % 10) == 00))
-  {
-    uint32_t AbsPos= ConvertPosition(CmdGetParam(shieldId,POWERSTEP01_ABS_POS));
-  
-    /* Correct estimated position if needed */
-    if (AbsPos != 0)
-    {  
-      if ((shieldPrm[shieldId].direction == FORWARD) && 
-          (AbsPos != shieldPrm[shieldId].currentPosition + shieldPrm[shieldId].relativePos))
-      {
-#ifdef _DEBUG_POWERSTEP01
-        snprintf(POWERSTEP01StrOut, DEBUG_BUFFER_SIZE, "F EstPos:%ld RealPos: %ld\n",shieldPrm[shieldId].relativePos,(AbsPos - shieldPrm[shieldId].currentPosition));
-        Serial.println(POWERSTEP01StrOut);
-#endif                
-        shieldPrm[shieldId].relativePos = AbsPos - shieldPrm[shieldId].currentPosition;
-        
-      }
-      else if ((shieldPrm[shieldId].direction == BACKWARD) && 
-               (AbsPos != shieldPrm[shieldId].currentPosition - shieldPrm[shieldId].relativePos))
-      {
-#ifdef _DEBUG_POWERSTEP01
-        snprintf(POWERSTEP01StrOut, DEBUG_BUFFER_SIZE, "B EstPos:%ld RealPos: %ld\n",shieldPrm[shieldId].relativePos,(AbsPos - shieldPrm[shieldId].currentPosition));
-        Serial.println(POWERSTEP01StrOut);
-#endif        
-        shieldPrm[shieldId].relativePos = shieldPrm[shieldId].currentPosition - AbsPos;
-      }
-    }
-  }
- 
-  switch (shieldPrm[shieldId].motionState) 
-  {
-    case ACCELERATING: 
-    {
-        if ((shieldPrm[shieldId].commandExecuted == SOFT_STOP_CMD)||
-            ((shieldPrm[shieldId].commandExecuted != RUN_CMD)&&  
-             (shieldPrm[shieldId].relativePos == shieldPrm[shieldId].startDecPos)))
-        {
-          shieldPrm[shieldId].motionState = DECELERATING;
-          shieldPrm[shieldId].accu = 0;
-#ifdef _DEBUG_POWERSTEP01
-          snprintf(POWERSTEP01StrOut, DEBUG_BUFFER_SIZE, "Acc->Dec: speed: %u relativepos: %ld \n",shieldPrm[shieldId].speed,shieldPrm[shieldId].relativePos);
-          Serial.println(POWERSTEP01StrOut);
-#endif    
-        }
-        else if ((shieldPrm[shieldId].speed >= shieldPrm[shieldId].maxSpeed)||
-                 ((shieldPrm[shieldId].commandExecuted != RUN_CMD)&&
-                  (shieldPrm[shieldId].relativePos == shieldPrm[shieldId].endAccPos)))
-        {
-          shieldPrm[shieldId].motionState = STEADY;
-#ifdef _DEBUG_POWERSTEP01
-        snprintf(POWERSTEP01StrOut, DEBUG_BUFFER_SIZE, "Acc->Steady: speed: %u relativepos: %ld \n",shieldPrm[shieldId].speed,shieldPrm[shieldId].relativePos);
-        Serial.println(POWERSTEP01StrOut);
-#endif    
-        }
-        else
-        {
-          bool speedUpdated = false;
-          /* Go on accelerating */
-          shieldPrm[shieldId].accu += ((uint32_t)shieldPrm[shieldId].acceleration << 16) / shieldPrm[shieldId].speed;
-          while (shieldPrm[shieldId].accu >= (0X10000L))
-          {
-            shieldPrm[shieldId].accu -= (0X10000L);
-            shieldPrm[shieldId].speed +=1;
-            speedUpdated = true;
-          }
-          
-          if (speedUpdated)
-          {
-            ApplySpeed(shieldId, shieldPrm[shieldId].speed);
-          }
-        }
-        break;
-    }
-    case STEADY: 
-    {
-      if  ((shieldPrm[shieldId].commandExecuted == SOFT_STOP_CMD)||
-           ((shieldPrm[shieldId].commandExecuted != RUN_CMD)&&
-            (shieldPrm[shieldId].relativePos >= (shieldPrm[shieldId].startDecPos))) ||
-           ((shieldPrm[shieldId].commandExecuted == RUN_CMD)&&
-            (shieldPrm[shieldId].speed > shieldPrm[shieldId].maxSpeed)))
-      {
-        shieldPrm[shieldId].motionState = DECELERATING;
-        shieldPrm[shieldId].accu = 0;
-      }
-      else if ((shieldPrm[shieldId].commandExecuted == RUN_CMD)&&
-               (shieldPrm[shieldId].speed < shieldPrm[shieldId].maxSpeed))
-      {
-        shieldPrm[shieldId].motionState = ACCELERATING;
-        shieldPrm[shieldId].accu = 0;
-      }
-      break;
-    }
-    case DECELERATING: 
-    {
-      if (((shieldPrm[shieldId].commandExecuted == SOFT_STOP_CMD)&&(shieldPrm[shieldId].speed <=  shieldPrm[shieldId].minSpeed))||
-          ((shieldPrm[shieldId].commandExecuted != RUN_CMD)&&
-           (shieldPrm[shieldId].relativePos >= shieldPrm[shieldId].stepsToTake)))
-      {
-        /* Motion process complete */
-        HardStop(shieldId);
-#ifdef _DEBUG_POWERSTEP01
-        snprintf(POWERSTEP01StrOut, DEBUG_BUFFER_SIZE, "Dec->Stop: speed: %u relativepos: %ld \n",shieldPrm[shieldId].speed,shieldPrm[shieldId].relativePos );
-        Serial.println(POWERSTEP01StrOut);
-#endif   
-      }
-      else if ((shieldPrm[shieldId].commandExecuted == RUN_CMD)&&
-               (shieldPrm[shieldId].speed <= shieldPrm[shieldId].maxSpeed))
-      {
-        shieldPrm[shieldId].motionState = STEADY;
-#ifdef _DEBUG_POWERSTEP01
-        snprintf(POWERSTEP01StrOut, DEBUG_BUFFER_SIZE, "Dec->Steady: speed: %u relativepos: %ld \n",shieldPrm[shieldId].speed,shieldPrm[shieldId].relativePos);
-        Serial.println(POWERSTEP01StrOut);
-#endif            
-      }
-      else
-      {
-        /* Go on decelerating */
-        if (shieldPrm[shieldId].speed > shieldPrm[shieldId].minSpeed)
-        {
-          bool speedUpdated = false;
-          shieldPrm[shieldId].accu += ((uint32_t)shieldPrm[shieldId].deceleration << 16) / shieldPrm[shieldId].speed;
-          while (shieldPrm[shieldId].accu >= (0X10000L))
-          {
-            shieldPrm[shieldId].accu -= (0X10000L);
-            shieldPrm[shieldId].speed -=1;
-            speedUpdated = true;
-          }
-          if (speedUpdated)
-          {
-            ApplySpeed(shieldId, shieldPrm[shieldId].speed);
-          }
-        }
-      }
-      break;
-    }
-    default: 
-    {
-      break;
-    }
-  }  
-  /* Set isr flag */
-  isrFlag = false;
-}
 
-/******************************************************//**
- * @brief  Updates the current speed of the shield
- * @param[in] shieldId (from 0 to 2)
- * @param[in] newSpeed in pps
- * @retval None
- **********************************************************/
-void POWERSTEP01::ApplySpeed(uint8_t shieldId, uint16_t newSpeed)
-{
-  if (newSpeed < POWERSTEP01_MIN_PWM_FREQ)
-  {
-    newSpeed = POWERSTEP01_MIN_PWM_FREQ;
-  }
-  if (newSpeed > POWERSTEP01_MAX_PWM_FREQ)
-  {
-    newSpeed = POWERSTEP01_MAX_PWM_FREQ;
-  }
-  
-  shieldPrm[shieldId].speed = newSpeed;
 
-  switch (shieldId)
-  {
-    case  0:
-      Pwm1SetFreq(newSpeed);
-      break;
-    case 1:
-      Pwm2SetFreq(newSpeed);
-      break;
-    case 2:
-      Pwm3SetFreq(newSpeed);
-      break;
-    default:
-      break; //ignore error
-  }
-}
-
-/******************************************************//**
- * @brief  Computes the speed profile according to the number of steps to move
- * @param[in] shieldId (from 0 to 2)
- * @param[in] nbSteps number of steps to perform
- * @retval None
- * @note Using the acceleration and deceleration of the shield,
- * this function determines the duration in steps of the acceleration,
- * steady and deceleration phases.
- * If the total number of steps to perform is big enough, a trapezoidal move
- * is performed (i.e. there is a steady phase where the motor runs at the maximum
- * speed.
- * Else, a triangular move is performed (no steady phase: the maximum speed is never
- * reached.
- **********************************************************/
-void POWERSTEP01::ComputeSpeedProfile(uint8_t shieldId, uint32_t nbSteps)
-{
-  uint32_t reqAccSteps; 
-	uint32_t reqDecSteps;
-   
-  /* compute the number of steps to get the targeted speed */
-  reqAccSteps = (shieldPrm[shieldId].maxSpeed - shieldPrm[shieldId].minSpeed);
-  reqAccSteps *= (shieldPrm[shieldId].maxSpeed + shieldPrm[shieldId].minSpeed);
-  reqDecSteps = reqAccSteps;
-  reqAccSteps /= (uint32_t)shieldPrm[shieldId].acceleration;
-  reqAccSteps /= 2;
-
-  /* compute the number of steps to stop */
-  reqDecSteps /= (uint32_t)shieldPrm[shieldId].deceleration;
-  reqDecSteps /= 2;
-
-	if(( reqAccSteps + reqDecSteps ) > nbSteps)
-	{	
-    /* Triangular move  */
-    /* reqDecSteps = (Pos * Dec) /(Dec+Acc) */
-   
-    reqDecSteps =  ((uint32_t) shieldPrm[shieldId].deceleration * nbSteps) / (shieldPrm[shieldId].acceleration + shieldPrm[shieldId].deceleration);
-    if (reqDecSteps > 1)
-    {
-      reqAccSteps = reqDecSteps - 1;
-      if(reqAccSteps == 0)
-      {
-        reqAccSteps = 1;
-      }      
-    }
-    else
-    {
-      reqAccSteps = 0;
-    }
-    shieldPrm[shieldId].endAccPos = reqAccSteps;
-    shieldPrm[shieldId].startDecPos = reqDecSteps;
-	}
-	else
-	{	 
-    /* Trapezoidal move */
-    /* accelerating phase to endAccPos */
-    /* steady phase from  endAccPos to startDecPos */
-    /* decelerating from startDecPos to stepsToTake*/
-    shieldPrm[shieldId].endAccPos = reqAccSteps;
-    shieldPrm[shieldId].startDecPos = nbSteps - reqDecSteps - 1;
-	}
-}
 
 /******************************************************//**
  * @brief  Converts the ABS_POSITION register value to a 32b signed integer
@@ -1217,138 +752,629 @@ void POWERSTEP01::FlagInterruptHandler(void)
   }
 }
 
+
+
 /******************************************************//**
- * @brief  Sends a command without arguments to the POWERSTEP01 via the SPI
- * @param[in] shieldId (from 0 to 2)
- * @param[in] param Command to send 
+ * @brief  Sends a command to a given device Id via the SPI
+ * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
+ * @param[in] param Command to send (all Powerstep01 commmands
+ * except POWERSTEP01_SET_PARAM, POWERSTEP01_GET_PARAM,
+ * POWERSTEP01_GET_STATUS)
+ * @param[in] value arguments to send on 32 bits
  * @retval None
  **********************************************************/
-void POWERSTEP01::SendCommand(uint8_t shieldId, uint8_t param)
+void POWERSTEP01::SendCommand(uint8_t deviceId, uint8_t param, uint32_t value)
 {
-  uint8_t spiIndex = numberOfShields - shieldId - 1;
-  bool itDisable = false;  
-  
-  do
+  if (numberOfDevices > deviceId)
   {
-    spiPreemtionByIsr = false;
-    if (itDisable)
+    uint32_t loop;
+    uint8_t maxArgumentNbBytes = 0;
+    uint8_t spiIndex = numberOfDevices - deviceId - 1;
+    bool itDisable = false;
+    do
     {
-      /* re-enable interrupts if disable in previous iteration */
-      interrupts();
-      itDisable = false;
-    }
+        spiPreemtionByIsr = false;
+        if (itDisable)
+        {
+          /* re-enable interrupts if disable in previous iteration */
+          interrupts();
+          itDisable = false;
+        }
+
   
-    for (uint32_t i = 0; i < numberOfShields; i++)
+    for (loop = 0; loop < numberOfDevices; loop++)
     {
-      spiTxBursts[3][i] = POWERSTEP01_NOP;
+        spiTxBursts[0][loop] = POWERSTEP01_NOP;
+        spiTxBursts[1][loop] = POWERSTEP01_NOP;
+        spiTxBursts[2][loop] = POWERSTEP01_NOP;
+        spiTxBursts[3][loop] = POWERSTEP01_NOP;
     }
-    spiTxBursts[3][spiIndex] = param;
+    switch (param & DAISY_CHAIN_COMMAND_MASK)
+    {
+      case POWERSTEP01_GO_TO:
+      case POWERSTEP01_GO_TO_DIR:
+               value = value & POWERSTEP01_ABS_POS_VALUE_MASK;
+      case POWERSTEP01_RUN:
+      case POWERSTEP01_MOVE:
+      case POWERSTEP01_GO_UNTIL:
+      case POWERSTEP01_GO_UNTIL_ACT_CPY:
+               spiTxBursts[0][spiIndex] = param;
+               spiTxBursts[1][spiIndex] = (uint8_t)(value >> 16);
+               spiTxBursts[2][spiIndex] = (uint8_t)(value >> 8);
+               spiTxBursts[3][spiIndex] = (uint8_t)(value);
+               maxArgumentNbBytes = 3;
+               break;
+      default:
+               spiTxBursts[0][spiIndex] = POWERSTEP01_NOP;
+               spiTxBursts[1][spiIndex] = POWERSTEP01_NOP;
+               spiTxBursts[2][spiIndex] = POWERSTEP01_NOP;
+               spiTxBursts[3][spiIndex] = param;
+    }
+    spiTxBursts[3][spiIndex] = (uint8_t)(value);
     
     /* Disable interruption before checking */
     /* pre-emption by ISR and SPI transfers*/
     noInterrupts();
     itDisable = true;
   } while (spiPreemtionByIsr); // check pre-emption by ISR
-
-  WriteBytes(&spiTxBursts[3][0], &spiRxBursts[3][0]); 
-  
-  /* re-enable interrupts after SPI transfers*/
-  interrupts();
-}
-
-/******************************************************//**
- * @brief  Sets the registers of the POWERSTEP01 to their predefined values
- * from POWERSTEP01_target_config.h
- * @param[in] shieldId (from 0 to 2)
- * @retval None
- **********************************************************/
-void POWERSTEP01::SetRegisterToPredefinedValues(uint8_t shieldId)
-{
-  CmdSetParam(shieldId,
-                    POWERSTEP01_ABS_POS,
-                    0);
-  CmdSetParam(shieldId,
-                    POWERSTEP01_EL_POS,
-                    0);
-  CmdSetParam(shieldId,
-                    POWERSTEP01_MARK,
-                    0);
-  switch (shieldId)
-  {
-    case 0:
-
-      CmdSetParam(shieldId,
-                        POWERSTEP01_OCD_TH,
-                        POWERSTEP01_CONF_PARAM_OCD_TH_SHIELD_0);
-      CmdSetParam(shieldId,
-                        POWERSTEP01_STEP_MODE,
-                        (uint8_t)POWERSTEP01_CONF_PARAM_STEP_SEL_SHIELD_0 |
-                        (uint8_t)POWERSTEP01_CONF_PARAM_SYNC_SEL_SHIELD_0);
-      CmdSetParam(shieldId,
-                        POWERSTEP01_ALARM_EN,
-                        POWERSTEP01_CONF_PARAM_ALARM_EN_SHIELD_0);
-      CmdSetParam(shieldId,
-                        POWERSTEP01_CONFIG,
-                        (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_SHIELD_0 |
-                        (uint16_t)POWERSTEP01_CONF_PARAM_TQ_REG_SHIELD_0 |
-                        (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_SHIELD_0 |
-                        (uint16_t)POWERSTEP01_CONF_PARAM_SR_SHIELD_0 |
-                        (uint16_t)POWERSTEP01_CONF_PARAM_TOFF_SHIELD_0);
-      break;
-    case 1:
-
-      CmdSetParam(shieldId,
-                        POWERSTEP01_OCD_TH,
-                        POWERSTEP01_CONF_PARAM_OCD_TH_SHIELD_1);
-      CmdSetParam(shieldId,
-                        POWERSTEP01_STEP_MODE,
-                        (uint8_t)POWERSTEP01_CONF_PARAM_STEP_SEL_SHIELD_1 |
-                        (uint8_t)POWERSTEP01_CONF_PARAM_SYNC_SEL_SHIELD_1);
-      CmdSetParam(shieldId,
-                        POWERSTEP01_ALARM_EN,
-                        POWERSTEP01_CONF_PARAM_ALARM_EN_SHIELD_1);
-      CmdSetParam(shieldId,
-                        POWERSTEP01_CONFIG,
-                        (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_SHIELD_1 |
-                        (uint16_t)POWERSTEP01_CONF_PARAM_TQ_REG_SHIELD_1 |
-                        (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_SHIELD_1 |
-                        (uint16_t)POWERSTEP01_CONF_PARAM_SR_SHIELD_1 |
-                        (uint16_t)POWERSTEP01_CONF_PARAM_TOFF_SHIELD_1);
-      break;
-    case 2:
-
-      CmdSetParam(shieldId,
-                        POWERSTEP01_OCD_TH,
-                        POWERSTEP01_CONF_PARAM_OCD_TH_SHIELD_2);
-      CmdSetParam(shieldId,
-                        POWERSTEP01_STEP_MODE,
-                        (uint8_t)POWERSTEP01_CONF_PARAM_STEP_SEL_SHIELD_2 |
-                        (uint8_t)POWERSTEP01_CONF_PARAM_SYNC_SEL_SHIELD_2);
-      CmdSetParam(shieldId,
-                        POWERSTEP01_ALARM_EN,
-                        POWERSTEP01_CONF_PARAM_ALARM_EN_SHIELD_2);
-      CmdSetParam(shieldId,
-                        POWERSTEP01_CONFIG,
-                        (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_SHIELD_2 |
-                        (uint16_t)POWERSTEP01_CONF_PARAM_TQ_REG_SHIELD_2 |
-                        (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_SHIELD_2 |
-                        (uint16_t)POWERSTEP01_CONF_PARAM_SR_SHIELD_2 |
-                        (uint16_t)POWERSTEP01_CONF_PARAM_TOFF_SHIELD_2);
-      break;
-    default: ;
+    for (loop = POWERSTEP01_CMD_ARG_MAX_NB_BYTES - 1 - maxArgumentNbBytes;
+         loop < POWERSTEP01_CMD_ARG_MAX_NB_BYTES;
+         loop++)
+    {
+       WriteBytes(&spiTxBursts[loop][0], &spiRxBursts[loop][0]);
+    }
   }
 }
+/******************************************************//**
+ * @brief  Sets the registers of the POWERSTEP01 to their predefined values
+ * from POWERSTEP01_target_config.h
+ * @param[in] DEVICEId (from 0 to 2)
+ * @retval None
+ **********************************************************/
+void POWERSTEP01::SetRegisterToPredefinedValues(uint8_t deviceId)
+{
+	  powerstep01_CmVm_t cmVm;
+
+	  CmdSetParam(deviceId, POWERSTEP01_ABS_POS, 0);
+	  CmdSetParam(deviceId, POWERSTEP01_EL_POS, 0);
+	  CmdSetParam(deviceId, POWERSTEP01_MARK, 0);
+
+	  switch (deviceId)
+	  {
+	    case 0:
+	      cmVm = POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_0;
+	      CmdSetParam(deviceId, POWERSTEP01_ACC,       AccDec_Steps_to_Par(POWERSTEP01_CONF_PARAM_ACC_DEVICE_0));
+	      CmdSetParam(deviceId, POWERSTEP01_DEC,       AccDec_Steps_to_Par(POWERSTEP01_CONF_PARAM_DEC_DEVICE_0));
+	      CmdSetParam(deviceId, POWERSTEP01_MAX_SPEED, MaxSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_MAX_SPEED_DEVICE_0));
+	      CmdSetParam(deviceId, POWERSTEP01_MIN_SPEED, POWERSTEP01_CONF_PARAM_LSPD_BIT_DEVICE_0|
+	                                                            MinSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_MIN_SPEED_DEVICE_0));
+	      CmdSetParam(deviceId, POWERSTEP01_FS_SPD,    POWERSTEP01_CONF_PARAM_BOOST_MODE_DEVICE_0|
+	                                                            FSSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_FS_SPD_DEVICE_0));
+	      CmdSetParam(deviceId, POWERSTEP01_INT_SPD,   IntSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_INT_SPD_DEVICE_0)); //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_K_THERM,   KTherm_to_Par(POWERSTEP01_CONF_PARAM_K_THERM_DEVICE_0));       //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_OCD_TH,    (uint8_t)POWERSTEP01_CONF_PARAM_OCD_TH_DEVICE_0);
+	      CmdSetParam(deviceId, POWERSTEP01_STALL_TH,  StallTh_to_Par(POWERSTEP01_CONF_PARAM_STALL_TH_DEVICE_0));      //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_STEP_MODE, (uint8_t)POWERSTEP01_CONF_PARAM_SYNC_MODE_DEVICE_0 |
+	                                                            (uint8_t)POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_0|
+	                                                            (uint8_t)POWERSTEP01_CONF_PARAM_STEP_MODE_DEVICE_0);
+	      CmdSetParam(deviceId, POWERSTEP01_ALARM_EN,  POWERSTEP01_CONF_PARAM_ALARM_EN_DEVICE_0);
+	      CmdSetParam(deviceId, POWERSTEP01_GATECFG1,  (uint16_t)POWERSTEP01_CONF_PARAM_IGATE_DEVICE_0 |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TCC_DEVICE_0   |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TBOOST_DEVICE_0|
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_WD_EN_DEVICE_0);
+	      CmdSetParam(deviceId, POWERSTEP01_GATECFG2,  (uint16_t)POWERSTEP01_CONF_PARAM_TBLANK_DEVICE_0 |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TDT_DEVICE_0);
+
+	      // Voltage mode
+	      if (cmVm == POWERSTEP01_CM_VM_VOLTAGE)
+	      {
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_HOLD,  Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_HOLD_DEVICE_0));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_RUN,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_RUN_DEVICE_0));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_ACC,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_ACC_DEVICE_0));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_DEC,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_DEC_DEVICE_0));
+	        CmdSetParam(deviceId, POWERSTEP01_ST_SLP,     BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_ST_SLP_DEVICE_0));
+	        CmdSetParam(deviceId, POWERSTEP01_FN_SLP_ACC, BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_FN_SLP_ACC_DEVICE_0));
+	        CmdSetParam(deviceId, POWERSTEP01_FN_SLP_DEC, BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_FN_SLP_DEC_DEVICE_0));
+	        CmdSetParam(deviceId, POWERSTEP01_CONFIG,     (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_0 |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_0       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_VS_COMP_DEVICE_0       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_0         |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_0       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_0        |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_PWM_DIV_DEVICE_0       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_PWM_MUL_DEVICE_0);
+	      }
+	      else
+	      {
+	        // Current mode
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_HOLD, Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_HOLD_DEVICE_0));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_RUN,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_RUN_DEVICE_0));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_ACC,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_ACC_DEVICE_0));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_DEC,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_DEC_DEVICE_0));
+	        CmdSetParam(deviceId, POWERSTEP01_T_FAST,    (uint8_t)POWERSTEP01_CONF_PARAM_TOFF_FAST_DEVICE_0 |
+	                                                              (uint8_t)POWERSTEP01_CONF_PARAM_FAST_STEP_DEVICE_0);
+	        CmdSetParam(deviceId, POWERSTEP01_TON_MIN,   Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TON_MIN_DEVICE_0));
+	        CmdSetParam(deviceId, POWERSTEP01_TOFF_MIN,  Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TOFF_MIN_DEVICE_0));
+
+	        CmdSetParam(deviceId, POWERSTEP01_CONFIG,    (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_0 |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_0       |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_TQ_REG_DEVICE_0        |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_0         |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_0       |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_0        |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_TSW_DEVICE_0           |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_PRED_EN_DEVICE_0);
+	      }
+	      break;
+	   case 1:
+	      cmVm = POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_1;
+	      CmdSetParam(deviceId, POWERSTEP01_ACC,       AccDec_Steps_to_Par(POWERSTEP01_CONF_PARAM_ACC_DEVICE_1));
+	      CmdSetParam(deviceId, POWERSTEP01_DEC,       AccDec_Steps_to_Par(POWERSTEP01_CONF_PARAM_DEC_DEVICE_1));
+	      CmdSetParam(deviceId, POWERSTEP01_MAX_SPEED, MaxSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_MAX_SPEED_DEVICE_1));
+	      CmdSetParam(deviceId, POWERSTEP01_MIN_SPEED, POWERSTEP01_CONF_PARAM_LSPD_BIT_DEVICE_1|
+	                                                            MinSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_MIN_SPEED_DEVICE_1));
+	      CmdSetParam(deviceId, POWERSTEP01_FS_SPD,    POWERSTEP01_CONF_PARAM_BOOST_MODE_DEVICE_1|
+	                                                            FSSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_FS_SPD_DEVICE_1));
+	      CmdSetParam(deviceId, POWERSTEP01_INT_SPD,   IntSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_INT_SPD_DEVICE_1)); //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_K_THERM,   KTherm_to_Par(POWERSTEP01_CONF_PARAM_K_THERM_DEVICE_1));       //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_OCD_TH,    (uint8_t)POWERSTEP01_CONF_PARAM_OCD_TH_DEVICE_1);
+	      CmdSetParam(deviceId, POWERSTEP01_STALL_TH,  StallTh_to_Par(POWERSTEP01_CONF_PARAM_STALL_TH_DEVICE_1));      //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_STEP_MODE, (uint8_t)POWERSTEP01_CONF_PARAM_SYNC_MODE_DEVICE_1 |
+	                                                            (uint8_t)POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_1|
+	                                                            (uint8_t)POWERSTEP01_CONF_PARAM_STEP_MODE_DEVICE_1);
+	      CmdSetParam(deviceId, POWERSTEP01_ALARM_EN,  POWERSTEP01_CONF_PARAM_ALARM_EN_DEVICE_1);
+	      CmdSetParam(deviceId, POWERSTEP01_GATECFG1,  (uint16_t)POWERSTEP01_CONF_PARAM_IGATE_DEVICE_1 |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TCC_DEVICE_1   |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TBOOST_DEVICE_1|
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_WD_EN_DEVICE_1);
+	      CmdSetParam(deviceId, POWERSTEP01_GATECFG2,  (uint16_t)POWERSTEP01_CONF_PARAM_TBLANK_DEVICE_1 |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TDT_DEVICE_1);
+
+	      // Voltage mode
+	      if (cmVm == POWERSTEP01_CM_VM_VOLTAGE)
+	      {
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_HOLD,  Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_HOLD_DEVICE_1));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_RUN,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_RUN_DEVICE_1));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_ACC,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_ACC_DEVICE_1));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_DEC,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_DEC_DEVICE_1));
+	        CmdSetParam(deviceId, POWERSTEP01_ST_SLP,     BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_ST_SLP_DEVICE_1));
+	        CmdSetParam(deviceId, POWERSTEP01_FN_SLP_ACC, BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_FN_SLP_ACC_DEVICE_1));
+	        CmdSetParam(deviceId, POWERSTEP01_FN_SLP_DEC, BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_FN_SLP_DEC_DEVICE_1));
+	        CmdSetParam(deviceId, POWERSTEP01_CONFIG,     (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_1 |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_1       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_VS_COMP_DEVICE_1       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_1         |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_1       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_1        |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_PWM_DIV_DEVICE_1       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_PWM_MUL_DEVICE_1);
+	      }
+	      else
+	      {
+	        // Current mode
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_HOLD, Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_HOLD_DEVICE_1));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_RUN,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_RUN_DEVICE_1));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_ACC,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_ACC_DEVICE_1));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_DEC,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_DEC_DEVICE_1));
+	        CmdSetParam(deviceId, POWERSTEP01_T_FAST,    (uint8_t)POWERSTEP01_CONF_PARAM_TOFF_FAST_DEVICE_1 |
+	                                                              (uint8_t)POWERSTEP01_CONF_PARAM_FAST_STEP_DEVICE_1);
+	        CmdSetParam(deviceId, POWERSTEP01_TON_MIN,   Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TON_MIN_DEVICE_1));
+	        CmdSetParam(deviceId, POWERSTEP01_TOFF_MIN,  Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TOFF_MIN_DEVICE_1));
+
+	        CmdSetParam(deviceId, POWERSTEP01_CONFIG,    (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_1 |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_1       |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_TQ_REG_DEVICE_1        |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_1         |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_1       |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_1        |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_TSW_DEVICE_1           |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_PRED_EN_DEVICE_1);
+	      }
+	      break;
+	   case 2:
+	      cmVm = POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_2;
+	      CmdSetParam(deviceId, POWERSTEP01_ACC,       AccDec_Steps_to_Par(POWERSTEP01_CONF_PARAM_ACC_DEVICE_2));
+	      CmdSetParam(deviceId, POWERSTEP01_DEC,       AccDec_Steps_to_Par(POWERSTEP01_CONF_PARAM_DEC_DEVICE_2));
+	      CmdSetParam(deviceId, POWERSTEP01_MAX_SPEED, MaxSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_MAX_SPEED_DEVICE_2));
+	      CmdSetParam(deviceId, POWERSTEP01_MIN_SPEED, POWERSTEP01_CONF_PARAM_LSPD_BIT_DEVICE_2|
+	                                                            MinSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_MIN_SPEED_DEVICE_2));
+	      CmdSetParam(deviceId, POWERSTEP01_FS_SPD,    POWERSTEP01_CONF_PARAM_BOOST_MODE_DEVICE_2|
+	                                                            FSSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_FS_SPD_DEVICE_2));
+	      CmdSetParam(deviceId, POWERSTEP01_INT_SPD,   IntSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_INT_SPD_DEVICE_2)); //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_K_THERM,   KTherm_to_Par(POWERSTEP01_CONF_PARAM_K_THERM_DEVICE_2));       //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_OCD_TH,    (uint8_t)POWERSTEP01_CONF_PARAM_OCD_TH_DEVICE_2);
+	      CmdSetParam(deviceId, POWERSTEP01_STALL_TH,  StallTh_to_Par(POWERSTEP01_CONF_PARAM_STALL_TH_DEVICE_2));      //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_STEP_MODE, (uint8_t)POWERSTEP01_CONF_PARAM_SYNC_MODE_DEVICE_2 |
+	                                                            (uint8_t)POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_2|
+	                                                            (uint8_t)POWERSTEP01_CONF_PARAM_STEP_MODE_DEVICE_2);
+	      CmdSetParam(deviceId, POWERSTEP01_ALARM_EN,  POWERSTEP01_CONF_PARAM_ALARM_EN_DEVICE_2);
+	      CmdSetParam(deviceId, POWERSTEP01_GATECFG1,  (uint16_t)POWERSTEP01_CONF_PARAM_IGATE_DEVICE_2 |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TCC_DEVICE_2   |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TBOOST_DEVICE_2|
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_WD_EN_DEVICE_2);
+	      CmdSetParam(deviceId, POWERSTEP01_GATECFG2,  (uint16_t)POWERSTEP01_CONF_PARAM_TBLANK_DEVICE_2 |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TDT_DEVICE_2);
+
+	      // Voltage mode
+	      if (cmVm == POWERSTEP01_CM_VM_VOLTAGE)
+	      {
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_HOLD,  Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_HOLD_DEVICE_2));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_RUN,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_RUN_DEVICE_2));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_ACC,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_ACC_DEVICE_2));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_DEC,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_DEC_DEVICE_2));
+	        CmdSetParam(deviceId, POWERSTEP01_ST_SLP,     BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_ST_SLP_DEVICE_2));
+	        CmdSetParam(deviceId, POWERSTEP01_FN_SLP_ACC, BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_FN_SLP_ACC_DEVICE_2));
+	        CmdSetParam(deviceId, POWERSTEP01_FN_SLP_DEC, BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_FN_SLP_DEC_DEVICE_2));
+	        CmdSetParam(deviceId, POWERSTEP01_CONFIG,     (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_2 |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_2       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_VS_COMP_DEVICE_2       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_2         |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_2       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_2        |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_PWM_DIV_DEVICE_2       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_PWM_MUL_DEVICE_2);
+	      }
+	      else
+	      {
+	        // Current mode
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_HOLD, Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_HOLD_DEVICE_2));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_RUN,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_RUN_DEVICE_2));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_ACC,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_ACC_DEVICE_2));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_DEC,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_DEC_DEVICE_2));
+	        CmdSetParam(deviceId, POWERSTEP01_T_FAST,    (uint8_t)POWERSTEP01_CONF_PARAM_TOFF_FAST_DEVICE_2 |
+	                                                              (uint8_t)POWERSTEP01_CONF_PARAM_FAST_STEP_DEVICE_2);
+	        CmdSetParam(deviceId, POWERSTEP01_TON_MIN,   Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TON_MIN_DEVICE_2));
+	        CmdSetParam(deviceId, POWERSTEP01_TOFF_MIN,  Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TOFF_MIN_DEVICE_2));
+
+	        CmdSetParam(deviceId, POWERSTEP01_CONFIG,    (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_2 |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_2       |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_TQ_REG_DEVICE_2        |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_2         |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_2       |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_2        |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_TSW_DEVICE_2           |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_PRED_EN_DEVICE_2);
+	      }
+	      break;
+	   case 3:
+	      cmVm = POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_3;
+	      CmdSetParam(deviceId, POWERSTEP01_ACC,       AccDec_Steps_to_Par(POWERSTEP01_CONF_PARAM_ACC_DEVICE_3));
+	      CmdSetParam(deviceId, POWERSTEP01_DEC,       AccDec_Steps_to_Par(POWERSTEP01_CONF_PARAM_DEC_DEVICE_3));
+	      CmdSetParam(deviceId, POWERSTEP01_MAX_SPEED, MaxSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_MAX_SPEED_DEVICE_3));
+	      CmdSetParam(deviceId, POWERSTEP01_MIN_SPEED, POWERSTEP01_CONF_PARAM_LSPD_BIT_DEVICE_3|
+	                                                            MinSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_MIN_SPEED_DEVICE_3));
+	      CmdSetParam(deviceId, POWERSTEP01_FS_SPD,    POWERSTEP01_CONF_PARAM_BOOST_MODE_DEVICE_3|
+	                                                            FSSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_FS_SPD_DEVICE_3));
+	      CmdSetParam(deviceId, POWERSTEP01_INT_SPD,   IntSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_INT_SPD_DEVICE_3)); //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_K_THERM,   KTherm_to_Par(POWERSTEP01_CONF_PARAM_K_THERM_DEVICE_3));       //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_OCD_TH,    (uint8_t)POWERSTEP01_CONF_PARAM_OCD_TH_DEVICE_3);
+	      CmdSetParam(deviceId, POWERSTEP01_STALL_TH,  StallTh_to_Par(POWERSTEP01_CONF_PARAM_STALL_TH_DEVICE_3));      //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_STEP_MODE, (uint8_t)POWERSTEP01_CONF_PARAM_SYNC_MODE_DEVICE_3 |
+	                                                            (uint8_t)POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_3|
+	                                                            (uint8_t)POWERSTEP01_CONF_PARAM_STEP_MODE_DEVICE_3);
+	      CmdSetParam(deviceId, POWERSTEP01_ALARM_EN,  POWERSTEP01_CONF_PARAM_ALARM_EN_DEVICE_3);
+	      CmdSetParam(deviceId, POWERSTEP01_GATECFG1,  (uint16_t)POWERSTEP01_CONF_PARAM_IGATE_DEVICE_3 |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TCC_DEVICE_3   |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TBOOST_DEVICE_3|
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_WD_EN_DEVICE_3);
+	      CmdSetParam(deviceId, POWERSTEP01_GATECFG2,  (uint16_t)POWERSTEP01_CONF_PARAM_TBLANK_DEVICE_3 |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TDT_DEVICE_3);
+
+	      // Voltage mode
+	      if (cmVm == POWERSTEP01_CM_VM_VOLTAGE)
+	      {
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_HOLD,  Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_HOLD_DEVICE_3));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_RUN,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_RUN_DEVICE_3));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_ACC,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_ACC_DEVICE_3));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_DEC,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_DEC_DEVICE_3));
+	        CmdSetParam(deviceId, POWERSTEP01_ST_SLP,     BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_ST_SLP_DEVICE_3));
+	        CmdSetParam(deviceId, POWERSTEP01_FN_SLP_ACC, BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_FN_SLP_ACC_DEVICE_3));
+	        CmdSetParam(deviceId, POWERSTEP01_FN_SLP_DEC, BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_FN_SLP_DEC_DEVICE_3));
+	        CmdSetParam(deviceId, POWERSTEP01_CONFIG,     (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_3 |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_3       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_VS_COMP_DEVICE_3       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_3         |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_3       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_3        |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_PWM_DIV_DEVICE_3       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_PWM_MUL_DEVICE_3);
+	      }
+	      else
+	      {
+	        // Current mode
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_HOLD, Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_HOLD_DEVICE_3));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_RUN,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_RUN_DEVICE_3));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_ACC,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_ACC_DEVICE_3));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_DEC,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_DEC_DEVICE_3));
+	        CmdSetParam(deviceId, POWERSTEP01_T_FAST,    (uint8_t)POWERSTEP01_CONF_PARAM_TOFF_FAST_DEVICE_3 |
+	                                                              (uint8_t)POWERSTEP01_CONF_PARAM_FAST_STEP_DEVICE_3);
+	        CmdSetParam(deviceId, POWERSTEP01_TON_MIN,   Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TON_MIN_DEVICE_3));
+	        CmdSetParam(deviceId, POWERSTEP01_TOFF_MIN,  Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TOFF_MIN_DEVICE_3));
+
+	        CmdSetParam(deviceId, POWERSTEP01_CONFIG,    (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_3 |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_3       |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_TQ_REG_DEVICE_3        |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_3         |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_3       |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_3        |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_TSW_DEVICE_3           |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_PRED_EN_DEVICE_3);
+	      }
+	      break;
+	   case 4:
+	      cmVm = POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_4;
+	      CmdSetParam(deviceId, POWERSTEP01_ACC,       AccDec_Steps_to_Par(POWERSTEP01_CONF_PARAM_ACC_DEVICE_4));
+	      CmdSetParam(deviceId, POWERSTEP01_DEC,       AccDec_Steps_to_Par(POWERSTEP01_CONF_PARAM_DEC_DEVICE_4));
+	      CmdSetParam(deviceId, POWERSTEP01_MAX_SPEED, MaxSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_MAX_SPEED_DEVICE_4));
+	      CmdSetParam(deviceId, POWERSTEP01_MIN_SPEED, POWERSTEP01_CONF_PARAM_LSPD_BIT_DEVICE_4|
+	                                                            MinSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_MIN_SPEED_DEVICE_4));
+	      CmdSetParam(deviceId, POWERSTEP01_FS_SPD,    POWERSTEP01_CONF_PARAM_BOOST_MODE_DEVICE_4|
+	                                                            FSSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_FS_SPD_DEVICE_4));
+	      CmdSetParam(deviceId, POWERSTEP01_INT_SPD,   IntSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_INT_SPD_DEVICE_4)); //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_K_THERM,   KTherm_to_Par(POWERSTEP01_CONF_PARAM_K_THERM_DEVICE_4));       //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_OCD_TH,    (uint8_t)POWERSTEP01_CONF_PARAM_OCD_TH_DEVICE_4);
+	      CmdSetParam(deviceId, POWERSTEP01_STALL_TH,  StallTh_to_Par(POWERSTEP01_CONF_PARAM_STALL_TH_DEVICE_4));      //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_STEP_MODE, (uint8_t)POWERSTEP01_CONF_PARAM_SYNC_MODE_DEVICE_4 |
+	                                                            (uint8_t)POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_4|
+	                                                            (uint8_t)POWERSTEP01_CONF_PARAM_STEP_MODE_DEVICE_4);
+	      CmdSetParam(deviceId, POWERSTEP01_ALARM_EN,  POWERSTEP01_CONF_PARAM_ALARM_EN_DEVICE_4);
+	      CmdSetParam(deviceId, POWERSTEP01_GATECFG1,  (uint16_t)POWERSTEP01_CONF_PARAM_IGATE_DEVICE_4 |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TCC_DEVICE_4   |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TBOOST_DEVICE_4|
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_WD_EN_DEVICE_4);
+	      CmdSetParam(deviceId, POWERSTEP01_GATECFG2,  (uint16_t)POWERSTEP01_CONF_PARAM_TBLANK_DEVICE_4 |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TDT_DEVICE_4);
+
+	      // Voltage mode
+	      if (cmVm == POWERSTEP01_CM_VM_VOLTAGE)
+	      {
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_HOLD,  Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_HOLD_DEVICE_4));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_RUN,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_RUN_DEVICE_4));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_ACC,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_ACC_DEVICE_4));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_DEC,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_DEC_DEVICE_4));
+	        CmdSetParam(deviceId, POWERSTEP01_ST_SLP,     BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_ST_SLP_DEVICE_4));
+	        CmdSetParam(deviceId, POWERSTEP01_FN_SLP_ACC, BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_FN_SLP_ACC_DEVICE_4));
+	        CmdSetParam(deviceId, POWERSTEP01_FN_SLP_DEC, BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_FN_SLP_DEC_DEVICE_4));
+	        CmdSetParam(deviceId, POWERSTEP01_CONFIG,     (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_4 |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_4       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_VS_COMP_DEVICE_4       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_4         |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_4       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_4        |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_PWM_DIV_DEVICE_4       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_PWM_MUL_DEVICE_4);
+	      }
+	      else
+	      {
+	        // Current mode
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_HOLD, Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_HOLD_DEVICE_4));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_RUN,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_RUN_DEVICE_4));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_ACC,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_ACC_DEVICE_4));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_DEC,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_DEC_DEVICE_4));
+	        CmdSetParam(deviceId, POWERSTEP01_T_FAST,    (uint8_t)POWERSTEP01_CONF_PARAM_TOFF_FAST_DEVICE_4 |
+	                                                              (uint8_t)POWERSTEP01_CONF_PARAM_FAST_STEP_DEVICE_4);
+	        CmdSetParam(deviceId, POWERSTEP01_TON_MIN,   Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TON_MIN_DEVICE_4));
+	        CmdSetParam(deviceId, POWERSTEP01_TOFF_MIN,  Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TOFF_MIN_DEVICE_4));
+
+	        CmdSetParam(deviceId, POWERSTEP01_CONFIG,    (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_4 |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_4       |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_TQ_REG_DEVICE_4        |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_4         |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_4       |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_4        |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_TSW_DEVICE_4           |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_PRED_EN_DEVICE_4);
+	      }
+	      break;
+	   case 5:
+	      cmVm = POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_5;
+	      CmdSetParam(deviceId, POWERSTEP01_ACC,       AccDec_Steps_to_Par(POWERSTEP01_CONF_PARAM_ACC_DEVICE_5));
+	      CmdSetParam(deviceId, POWERSTEP01_DEC,       AccDec_Steps_to_Par(POWERSTEP01_CONF_PARAM_DEC_DEVICE_5));
+	      CmdSetParam(deviceId, POWERSTEP01_MAX_SPEED, MaxSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_MAX_SPEED_DEVICE_5));
+	      CmdSetParam(deviceId, POWERSTEP01_MIN_SPEED, POWERSTEP01_CONF_PARAM_LSPD_BIT_DEVICE_5|
+	                                                            MinSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_MIN_SPEED_DEVICE_5));
+	      CmdSetParam(deviceId, POWERSTEP01_FS_SPD,    POWERSTEP01_CONF_PARAM_BOOST_MODE_DEVICE_5|
+	                                                            FSSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_FS_SPD_DEVICE_5));
+	      CmdSetParam(deviceId, POWERSTEP01_INT_SPD,   IntSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_INT_SPD_DEVICE_5)); //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_K_THERM,   KTherm_to_Par(POWERSTEP01_CONF_PARAM_K_THERM_DEVICE_5));       //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_OCD_TH,    (uint8_t)POWERSTEP01_CONF_PARAM_OCD_TH_DEVICE_5);
+	      CmdSetParam(deviceId, POWERSTEP01_STALL_TH,  StallTh_to_Par(POWERSTEP01_CONF_PARAM_STALL_TH_DEVICE_5));      //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_STEP_MODE, (uint8_t)POWERSTEP01_CONF_PARAM_SYNC_MODE_DEVICE_5 |
+	                                                            (uint8_t)POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_5|
+	                                                            (uint8_t)POWERSTEP01_CONF_PARAM_STEP_MODE_DEVICE_5);
+	      CmdSetParam(deviceId, POWERSTEP01_ALARM_EN,  POWERSTEP01_CONF_PARAM_ALARM_EN_DEVICE_5);
+	      CmdSetParam(deviceId, POWERSTEP01_GATECFG1,  (uint16_t)POWERSTEP01_CONF_PARAM_IGATE_DEVICE_5 |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TCC_DEVICE_5   |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TBOOST_DEVICE_5|
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_WD_EN_DEVICE_5);
+	      CmdSetParam(deviceId, POWERSTEP01_GATECFG2,  (uint16_t)POWERSTEP01_CONF_PARAM_TBLANK_DEVICE_5 |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TDT_DEVICE_5);
+
+	      // Voltage mode
+	      if (cmVm == POWERSTEP01_CM_VM_VOLTAGE)
+	      {
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_HOLD,  Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_HOLD_DEVICE_5));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_RUN,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_RUN_DEVICE_5));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_ACC,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_ACC_DEVICE_5));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_DEC,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_DEC_DEVICE_5));
+	        CmdSetParam(deviceId, POWERSTEP01_ST_SLP,     BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_ST_SLP_DEVICE_5));
+	        CmdSetParam(deviceId, POWERSTEP01_FN_SLP_ACC, BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_FN_SLP_ACC_DEVICE_5));
+	        CmdSetParam(deviceId, POWERSTEP01_FN_SLP_DEC, BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_FN_SLP_DEC_DEVICE_5));
+	        CmdSetParam(deviceId, POWERSTEP01_CONFIG,     (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_5 |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_5       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_VS_COMP_DEVICE_5       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_5         |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_5       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_5        |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_PWM_DIV_DEVICE_5       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_PWM_MUL_DEVICE_5);
+	      }
+	      else
+	      {
+	        // Current mode
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_HOLD, Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_HOLD_DEVICE_5));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_RUN,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_RUN_DEVICE_5));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_ACC,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_ACC_DEVICE_5));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_DEC,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_DEC_DEVICE_5));
+	        CmdSetParam(deviceId, POWERSTEP01_T_FAST,    (uint8_t)POWERSTEP01_CONF_PARAM_TOFF_FAST_DEVICE_5 |
+	                                                              (uint8_t)POWERSTEP01_CONF_PARAM_FAST_STEP_DEVICE_5);
+	        CmdSetParam(deviceId, POWERSTEP01_TON_MIN,   Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TON_MIN_DEVICE_5));
+	        CmdSetParam(deviceId, POWERSTEP01_TOFF_MIN,  Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TOFF_MIN_DEVICE_5));
+
+	        CmdSetParam(deviceId, POWERSTEP01_CONFIG,    (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_5 |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_5       |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_TQ_REG_DEVICE_5        |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_5         |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_5       |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_5        |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_TSW_DEVICE_5           |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_PRED_EN_DEVICE_5);
+	      }
+	      break;
+	   case 6:
+	      cmVm = POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_6;
+	      CmdSetParam(deviceId, POWERSTEP01_ACC,       AccDec_Steps_to_Par(POWERSTEP01_CONF_PARAM_ACC_DEVICE_6));
+	      CmdSetParam(deviceId, POWERSTEP01_DEC,       AccDec_Steps_to_Par(POWERSTEP01_CONF_PARAM_DEC_DEVICE_6));
+	      CmdSetParam(deviceId, POWERSTEP01_MAX_SPEED, MaxSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_MAX_SPEED_DEVICE_6));
+	      CmdSetParam(deviceId, POWERSTEP01_MIN_SPEED, POWERSTEP01_CONF_PARAM_LSPD_BIT_DEVICE_6|
+	                                                            MinSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_MIN_SPEED_DEVICE_6));
+	      CmdSetParam(deviceId, POWERSTEP01_FS_SPD,    POWERSTEP01_CONF_PARAM_BOOST_MODE_DEVICE_6|
+	                                                            FSSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_FS_SPD_DEVICE_6));
+	      CmdSetParam(deviceId, POWERSTEP01_INT_SPD,   IntSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_INT_SPD_DEVICE_6)); //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_K_THERM,   KTherm_to_Par(POWERSTEP01_CONF_PARAM_K_THERM_DEVICE_6));       //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_OCD_TH,    (uint8_t)POWERSTEP01_CONF_PARAM_OCD_TH_DEVICE_6);
+	      CmdSetParam(deviceId, POWERSTEP01_STALL_TH,  StallTh_to_Par(POWERSTEP01_CONF_PARAM_STALL_TH_DEVICE_6));      //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_STEP_MODE, (uint8_t)POWERSTEP01_CONF_PARAM_SYNC_MODE_DEVICE_6 |
+	                                                            (uint8_t)POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_6|
+	                                                            (uint8_t)POWERSTEP01_CONF_PARAM_STEP_MODE_DEVICE_6);
+	      CmdSetParam(deviceId, POWERSTEP01_ALARM_EN,  POWERSTEP01_CONF_PARAM_ALARM_EN_DEVICE_6);
+	      CmdSetParam(deviceId, POWERSTEP01_GATECFG1,  (uint16_t)POWERSTEP01_CONF_PARAM_IGATE_DEVICE_6 |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TCC_DEVICE_6   |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TBOOST_DEVICE_6|
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_WD_EN_DEVICE_6);
+	      CmdSetParam(deviceId, POWERSTEP01_GATECFG2,  (uint16_t)POWERSTEP01_CONF_PARAM_TBLANK_DEVICE_6 |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TDT_DEVICE_6);
+
+	      // Voltage mode
+	      if (cmVm == POWERSTEP01_CM_VM_VOLTAGE)
+	      {
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_HOLD,  Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_HOLD_DEVICE_6));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_RUN,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_RUN_DEVICE_6));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_ACC,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_ACC_DEVICE_6));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_DEC,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_DEC_DEVICE_6));
+	        CmdSetParam(deviceId, POWERSTEP01_ST_SLP,     BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_ST_SLP_DEVICE_6));
+	        CmdSetParam(deviceId, POWERSTEP01_FN_SLP_ACC, BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_FN_SLP_ACC_DEVICE_6));
+	        CmdSetParam(deviceId, POWERSTEP01_FN_SLP_DEC, BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_FN_SLP_DEC_DEVICE_6));
+	        CmdSetParam(deviceId, POWERSTEP01_CONFIG,     (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_6 |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_6       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_VS_COMP_DEVICE_6       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_6         |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_6       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_6        |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_PWM_DIV_DEVICE_6       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_PWM_MUL_DEVICE_6);
+	      }
+	      else
+	      {
+	        // Current mode
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_HOLD, Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_HOLD_DEVICE_6));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_RUN,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_RUN_DEVICE_6));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_ACC,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_ACC_DEVICE_6));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_DEC,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_DEC_DEVICE_6));
+	        CmdSetParam(deviceId, POWERSTEP01_T_FAST,    (uint8_t)POWERSTEP01_CONF_PARAM_TOFF_FAST_DEVICE_6 |
+	                                                              (uint8_t)POWERSTEP01_CONF_PARAM_FAST_STEP_DEVICE_6);
+	        CmdSetParam(deviceId, POWERSTEP01_TON_MIN,   Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TON_MIN_DEVICE_6));
+	        CmdSetParam(deviceId, POWERSTEP01_TOFF_MIN,  Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TOFF_MIN_DEVICE_6));
+
+	        CmdSetParam(deviceId, POWERSTEP01_CONFIG,    (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_6 |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_6       |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_TQ_REG_DEVICE_6        |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_6         |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_6       |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_6        |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_TSW_DEVICE_6           |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_PRED_EN_DEVICE_6);
+	      }
+	      break;
+	   case 7:
+	   default:
+	      cmVm = POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_7;
+	      CmdSetParam(deviceId, POWERSTEP01_ACC,       AccDec_Steps_to_Par(POWERSTEP01_CONF_PARAM_ACC_DEVICE_7));
+	      CmdSetParam(deviceId, POWERSTEP01_DEC,       AccDec_Steps_to_Par(POWERSTEP01_CONF_PARAM_DEC_DEVICE_7));
+	      CmdSetParam(deviceId, POWERSTEP01_MAX_SPEED, MaxSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_MAX_SPEED_DEVICE_7));
+	      CmdSetParam(deviceId, POWERSTEP01_MIN_SPEED, POWERSTEP01_CONF_PARAM_LSPD_BIT_DEVICE_7|
+	                                                            MinSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_MIN_SPEED_DEVICE_7));
+	      CmdSetParam(deviceId, POWERSTEP01_FS_SPD,    POWERSTEP01_CONF_PARAM_BOOST_MODE_DEVICE_7|
+	                                                            FSSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_FS_SPD_DEVICE_7));
+	      CmdSetParam(deviceId, POWERSTEP01_INT_SPD,   IntSpd_Steps_to_Par(POWERSTEP01_CONF_PARAM_INT_SPD_DEVICE_7)); //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_K_THERM,   KTherm_to_Par(POWERSTEP01_CONF_PARAM_K_THERM_DEVICE_7));       //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_OCD_TH,    (uint8_t)POWERSTEP01_CONF_PARAM_OCD_TH_DEVICE_7);
+	      CmdSetParam(deviceId, POWERSTEP01_STALL_TH,  StallTh_to_Par(POWERSTEP01_CONF_PARAM_STALL_TH_DEVICE_7));      //voltage mode only but not redefined for current mode
+	      CmdSetParam(deviceId, POWERSTEP01_STEP_MODE, (uint8_t)POWERSTEP01_CONF_PARAM_SYNC_MODE_DEVICE_7 |
+	                                                            (uint8_t)POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_7|
+	                                                            (uint8_t)POWERSTEP01_CONF_PARAM_STEP_MODE_DEVICE_7);
+	      CmdSetParam(deviceId, POWERSTEP01_ALARM_EN,  POWERSTEP01_CONF_PARAM_ALARM_EN_DEVICE_7);
+	      CmdSetParam(deviceId, POWERSTEP01_GATECFG1,  (uint16_t)POWERSTEP01_CONF_PARAM_IGATE_DEVICE_7 |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TCC_DEVICE_7   |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TBOOST_DEVICE_7|
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_WD_EN_DEVICE_7);
+	      CmdSetParam(deviceId, POWERSTEP01_GATECFG2,  (uint16_t)POWERSTEP01_CONF_PARAM_TBLANK_DEVICE_7 |
+	                                                            (uint16_t)POWERSTEP01_CONF_PARAM_TDT_DEVICE_7);
+
+	      // Voltage mode
+	      if (cmVm == POWERSTEP01_CM_VM_VOLTAGE)
+	      {
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_HOLD,  Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_HOLD_DEVICE_7));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_RUN,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_RUN_DEVICE_7));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_ACC,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_ACC_DEVICE_7));
+	        CmdSetParam(deviceId, POWERSTEP01_KVAL_DEC,   Kval_Perc_to_Par(POWERSTEP01_CONF_PARAM_KVAL_DEC_DEVICE_7));
+	        CmdSetParam(deviceId, POWERSTEP01_ST_SLP,     BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_ST_SLP_DEVICE_7));
+	        CmdSetParam(deviceId, POWERSTEP01_FN_SLP_ACC, BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_FN_SLP_ACC_DEVICE_7));
+	        CmdSetParam(deviceId, POWERSTEP01_FN_SLP_DEC, BEMF_Slope_Perc_to_Par(POWERSTEP01_CONF_PARAM_FN_SLP_DEC_DEVICE_7));
+	        CmdSetParam(deviceId, POWERSTEP01_CONFIG,     (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_7 |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_7       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_VS_COMP_DEVICE_7       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_7         |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_7       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_7        |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_PWM_DIV_DEVICE_7       |
+	                                                                  (uint16_t)POWERSTEP01_CONF_PARAM_PWM_MUL_DEVICE_7);
+	      }
+	      else
+	      {
+	        // Current mode
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_HOLD, Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_HOLD_DEVICE_7));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_RUN,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_RUN_DEVICE_7));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_ACC,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_ACC_DEVICE_7));
+	        CmdSetParam(deviceId, POWERSTEP01_TVAL_DEC,  Tval_Current_to_Par(POWERSTEP01_CONF_PARAM_TVAL_DEC_DEVICE_7));
+	        CmdSetParam(deviceId, POWERSTEP01_T_FAST,    (uint8_t)POWERSTEP01_CONF_PARAM_TOFF_FAST_DEVICE_7 |
+	                                                              (uint8_t)POWERSTEP01_CONF_PARAM_FAST_STEP_DEVICE_7);
+	        CmdSetParam(deviceId, POWERSTEP01_TON_MIN,   Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TON_MIN_DEVICE_7));
+	        CmdSetParam(deviceId, POWERSTEP01_TOFF_MIN,  Tmin_Time_to_Par(POWERSTEP01_CONF_PARAM_TOFF_MIN_DEVICE_7));
+
+	        CmdSetParam(deviceId, POWERSTEP01_CONFIG,    (uint16_t)POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_7 |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_7       |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_TQ_REG_DEVICE_7        |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_7         |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_7       |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_7        |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_TSW_DEVICE_7           |
+	                                                              (uint16_t)POWERSTEP01_CONF_PARAM_PRED_EN_DEVICE_7);
+	      }
+	      break;
+	  }
+}
 
 /******************************************************//**
  * @brief  Sets the registers of the POWERSTEP01 to their predefined values
  * from POWERSTEP01_target_config.h
- * @param[in] shieldId (from 0 to 2)
+ * @param[in] DEVICEId (from 0 to 2)
  * @retval None
  **********************************************************/
 void POWERSTEP01::WriteBytes(uint8_t *pByteToTransmit, uint8_t *pReceivedByte)
 {
   digitalWrite(SS, LOW);
-  for (uint32_t i = 0; i < numberOfShields; i++)
+  for (uint32_t i = 0; i < numberOfDevices; i++)
   {
     *pReceivedByte = SPI.transfer(*pByteToTransmit);
     pByteToTransmit++;
@@ -1361,366 +1387,7 @@ void POWERSTEP01::WriteBytes(uint8_t *pByteToTransmit, uint8_t *pReceivedByte)
   }
 }
 
-/******************************************************//**
- * @brief  Initialises the PWM uses by the specified shield
- * @param[in] shieldId (from 0 to 2)
- * @retval None
- * @note Shield 0 uses PW1 based on timer 1 
- * Shield 1 uses PWM 2 based on timer 2
- * Shield 2 uses PWM3 based timer 0
- **********************************************************/
-void POWERSTEP01::PwmInit(uint8_t shieldId)
-{
-  switch (shieldId)
-  {
-    case 0:
-      /* PWM1 uses timer 1 */
-      /* Initialise timer by setting waveform generation mode  
-      to PWM phase and Frequency correct: mode = 8 
-      (WGM10 = 0, WGM11 = 0, WGM12 = 0, WGM13 = 1) */
-    
-      /* Stop timer1 by clearing CSS bits and set WGM13 and WGM12 */
-      TCCR1B = 0x10;  
-       
-      /* Set WGM10 and WGM11 */
-      TCCR1A =  0x00;  
-      
-      /*  Disable Timer1 interrupt */
-      TIMSK1 = 0;
-    
-      break;
-    case  1:
-      /* PWM2 uses timer 2 */
-      /* Initialise timer by setting waveform generation mode  
-      to PWM phase correct: mode = 5
-      (WGM0 = 1, WGM21 = 0, WGM22 = 1) */
-      
-      /* Stop timer2 by clearing CSS bits and set WGM22 */
-      TCCR2B = 0x08;  
-       
-      /* Set WGM20 and WGM21 */
-      TCCR2A =  0x01;  
-      
-      /*  Disable Timer2 interrupt */
-      TIMSK2 = 0; 
-      
-      break;
 
-
-    case 2:
-      /* PWM3 uses timer 0 */
-      /* !!!!! Caution: Calling this configuration will break */
-      /* all default Arduino's timing functions as delay(),millis()... */
-      
-      /* Initialise timer by setting waveform generation mode  
-      to PWM phase correct: mode = 5
-      (WGM0 = 1, WGM21 = 0, WGM22 = 1) */
-      
-      /* Stop timer0 by clearing CSS bits and set WGM22 */
-      TCCR0B = 0x08;  
-       
-      /* Set WGM00 and WGM01 */
-      TCCR0A =  0x01;  
-      
-      /*  Disable Timer0 interrupt */
-      TIMSK0 = 0;
-      break;
-    default:
-      break;//ignore error
-  }
-}
-
-/******************************************************//**
- * @brief  Sets the frequency of PWM1 used by shield 0
- * @param[in] newFreq in Hz
- * @retval None
- * @note The frequency is directly the current speed of the shield
- **********************************************************/
-void POWERSTEP01::Pwm1SetFreq(uint16_t newFreq)
-{
-  uint8_t index = 0;
-  uint32_t top;
-  uint16_t TargetedPrescaler;
- 
-  TargetedPrescaler = (int16_t)(F_CPU / (2 * (uint32_t) newFreq * UINT16_MAX));
-
-  do
-  {
-    while ((index < PRESCALER_ARRAY_TIMER0_1_SIZE - 1)&&
-           (TargetedPrescaler > prescalerArrayTimer0_1[++index]));
-    TargetedPrescaler = prescalerArrayTimer0_1[index];
-    top = F_CPU/(2* (uint32_t)newFreq * TargetedPrescaler);
-   } while ((index < PRESCALER_ARRAY_TIMER0_1_SIZE - 1) && (top > UINT16_MAX));
-
-  /* Disable Timer1 Interrupt */
-  cbi(TIMSK1,TOIE1);
-  
-  ICR1 = (uint16_t)top;
-  OCR1A = ((uint16_t)top) >> 1; // Set a 50 % duty cycle
-  
-  /* Enable compare match channel A output */
-  sbi(TCCR1A, COM1A1);
-  
-    /* Reenable Timer1 Interrupt */
-  sbi(TIMSK1,TOIE1);
-  
-  /* Set the Prescaler without erasing WGM12 and WGM13 bit*/
-  /* And so, start the timer */
-  TCCR1B = (TCCR1B & 0x18) | index;
-}
-
-/******************************************************//**
- * @brief  Sets the frequency of PWM2 used by shield 1
- * @param[in] newFreq in Hz
- * @retval None
- * @note The frequency is directly the current speed of the shield
- **********************************************************/
-void POWERSTEP01::Pwm2SetFreq(uint16_t newFreq)
-{
-  uint8_t index = 0;
-  uint16_t top;
-  uint16_t TargetedPrescaler;
- 
-  TargetedPrescaler = (uint16_t)(F_CPU / (2 * (uint32_t)newFreq * UINT8_MAX));
-
-  /* Compute timer2 top */
-  do
-  {
-    while ((index < PRESCALER_ARRAY_TIMER2_SIZE - 1) && (TargetedPrescaler > prescalerArrayTimer2[++index]));
-    TargetedPrescaler = prescalerArrayTimer2[index];
-    top = (uint16_t)(F_CPU/(2* (uint32_t)newFreq * TargetedPrescaler));
-   } while ((index < PRESCALER_ARRAY_TIMER2_SIZE - 1) && (top > UINT8_MAX));
-  
-  /* Disable Timer2 Interrupt */
-  cbi(TIMSK2,TOIE2);
-  
-  OCR2A = (uint8_t)top;
-  OCR2B = (uint8_t)top >> 1; // Set a 50 % duty cycle
-  
-  /* Enable compare match channel B output */
-  sbi(TCCR2A, COM2B1);
-
-  /* Reenable Timer2 Interrupt */
-  sbi(TIMSK2,TOIE2);
-  
-  /* Set the Prescaler without erasing WGM22 bit*/
-  /* And so, start the timer */
-  TCCR2B = (TCCR2B & 0x8) | index;
-}
-
-/******************************************************//**
- * @brief  Sets the frequency of PWM3 used by shield 2
- * @param[in] newFreq in Hz
- * @retval None
- * @note The frequency is directly the current speed of the shield
- **********************************************************/
-void POWERSTEP01::Pwm3SetFreq(uint16_t newFreq)
-{
-  uint8_t index = 0;
-  uint16_t top;
-  uint16_t TargetedPrescaler;
-  
- 
-  TargetedPrescaler = (uint16_t)(F_CPU / (4 * (uint32_t)newFreq * UINT8_MAX));
-
-  /* Compute timer0 top */
-  do
-  {
-    while ((index < PRESCALER_ARRAY_TIMER0_1_SIZE - 1) && 
-           (TargetedPrescaler > prescalerArrayTimer0_1[++index]));
-    TargetedPrescaler = prescalerArrayTimer0_1[index];
-
-    top = (uint16_t)(F_CPU/(4* (uint32_t)newFreq * TargetedPrescaler));
-    
-   } while ((index < PRESCALER_ARRAY_TIMER0_1_SIZE - 1) && (top > UINT8_MAX));
-  
-  /* Disable Timer0 Interrupt */
-  cbi(TIMSK0,TOIE0);
-  
-  OCR0A = (uint8_t)top  ;
-  OCR0B = (uint8_t)(top) >> 1 ; // Set a 50 % duty cycle
-  
-  /* Enable compare match channel A output */
-  sbi(TCCR0A, COM0A0);
-    
-  /* Reenable Timer0 Interrupt */
-  sbi(TIMSK0,TOIE0);
-
-  /* Set the Prescaler without erasing WGM02 bit*/
-  /* And so, start the timer */
-  TCCR0B = (TCCR0B & 0x8) | index;
-}
-
-/******************************************************//**
- * @brief  Stops the PWM uses by the specified shield
- * @param[in] shieldId (from 0 to 2)
- * @retval None
- **********************************************************/
-void POWERSTEP01::PwmStop(uint8_t shieldId)
-{
-  switch (shieldId)
-  {
-    case 0:
-      /* PWM1 uses timer 1 */
-    
-      /* Stop timer1 by clearing CSS bits (keep  WGM13 and WGM12) */
-      TCCR1B = 0x10;  
-             
-      /*  Disable Timer1 interrupt */
-      TIMSK1 = 0;
-    
-      break;
-    case  1:
-      /* PWM2 uses timer 2 */
-     
-      /* Stop timer2 by clearing CSS bits (keep  WGM22) */
-      TCCR2B = 0x08;  
-       
-      /*  Disable Timer2 interrupt */
-      TIMSK2 = 0; 
-      
-      break;
-    case 2:
-      /* PWM3 uses timer 0 */
-      /* !!!!! Caution: Calling this configuration will break */
-      /* all default Arduino's timing functions as delay(),millis()... */
-           
-      /* Stop timer0 by clearing CSS bits (keep  WGM22) */
-      TCCR0B = 0x08;  
-       
-      
-      /*  Disable Timer0 interrupt */
-      TIMSK0 = 0;
-      
-      break;
-    default:
-      break;//ignore error
-  }
-}
-
-/******************************************************//**
- * @brief  Sets the parameters of the shield to predefined values
- * from POWERSTEP01_target_config.h
- * @param None
- * @retval None
- **********************************************************/
-void POWERSTEP01::SetShieldParamsToPredefinedValues(void)
-{
-  shieldPrm[0].acceleration = POWERSTEP01_CONF_PARAM_ACC_SHIELD_0;
-  shieldPrm[0].deceleration = POWERSTEP01_CONF_PARAM_DEC_SHIELD_0;
-  shieldPrm[0].maxSpeed = POWERSTEP01_CONF_PARAM_MAX_SPEED_SHIELD_0;
-  shieldPrm[0].minSpeed = POWERSTEP01_CONF_PARAM_MIN_SPEED_SHIELD_0;
-  
-  shieldPrm[1].acceleration = POWERSTEP01_CONF_PARAM_ACC_SHIELD_1;
-  shieldPrm[1].deceleration = POWERSTEP01_CONF_PARAM_DEC_SHIELD_1;
-  shieldPrm[1].maxSpeed = POWERSTEP01_CONF_PARAM_MAX_SPEED_SHIELD_1;
-  shieldPrm[1].minSpeed = POWERSTEP01_CONF_PARAM_MIN_SPEED_SHIELD_1;
-  
-  shieldPrm[2].acceleration = POWERSTEP01_CONF_PARAM_ACC_SHIELD_2;
-  shieldPrm[2].deceleration = POWERSTEP01_CONF_PARAM_DEC_SHIELD_2;
-  shieldPrm[2].maxSpeed = POWERSTEP01_CONF_PARAM_MAX_SPEED_SHIELD_2;
-  shieldPrm[2].minSpeed = POWERSTEP01_CONF_PARAM_MIN_SPEED_SHIELD_2;
-  
-  for (uint8_t i = 0; i < numberOfShields; i++)
-  {
-    SetRegisterToPredefinedValues(i);
-  }   
-}
-
-/******************************************************//**
- * @brief Initialises the bridge parameters to start the movement
- * and enable the power bridge
- * @param[in] shieldId (from 0 to 2)
- * @retval None
- **********************************************************/
-void POWERSTEP01::StartMovement(uint8_t shieldId)
-{
-  /* Enable POWERSTEP01 powerstage */
-
-  if (shieldPrm[shieldId].endAccPos != 0)
-  {
-    shieldPrm[shieldId].motionState = ACCELERATING;;
-  }
-  else
-  {
-    shieldPrm[shieldId].motionState = DECELERATING;    
-  }
-
-  shieldPrm[shieldId].accu = 0;
-  shieldPrm[shieldId].relativePos = 0;
-  ApplySpeed(shieldId, shieldPrm[shieldId].minSpeed);
-#ifdef _DEBUG_POWERSTEP01
-  snprintf(POWERSTEP01StrOut, DEBUG_BUFFER_SIZE, "Stop->Acc: speed: %u relPos: %ld\n", shieldPrm[shieldId].minSpeed, shieldPrm[shieldId].relativePos) ;
-  Serial.println(POWERSTEP01StrOut);
-#endif        
-}
-
-
-
-#ifdef _USE_TIMER_0_FOR_POWERSTEP01
-/******************************************************//**
- * @brief Timer0 interrupt handler used by PW3 for shield 2
- * and enable the power bridge
- * @param None
- * @retval None
- **********************************************************/
-ISR(TIMER0_OVF_vect) 
-{
-  static bool isr0Toggle = false;
-  class POWERSTEP01* instancePtr = POWERSTEP01::GetInstancePtr();
-  if (isr0Toggle)
-  {
-    if (instancePtr != NULL)
-    {  
-      if (instancePtr->GetShieldState(2) != INACTIVE)
-      {
-        instancePtr->StepClockHandler(2);
-      }
-    }
-    isr0Toggle = false;
-  }
-  else
-  {
-    isr0Toggle = true;
-  }
-}
-#endif
-
-/******************************************************//**
- * @brief Timer1 interrupt handler used by PW1 for shield 0
- * and enable the power bridge
- * @param None
- * @retval None
- **********************************************************/
-ISR(TIMER1_OVF_vect) 
-{
-  class POWERSTEP01* instancePtr = POWERSTEP01::GetInstancePtr();
-  if (instancePtr != NULL)
-  {  
-    if (instancePtr->GetShieldState(0) != INACTIVE)
-    {
-      instancePtr->StepClockHandler(0);
-    }
-  }
-}
-
-/******************************************************//**
- * @brief Timer2 interrupt handler used by PW2 for shield 1
- * and enable the power bridge
- * @param  None
- * @retval None
- **********************************************************/
- ISR(TIMER2_OVF_vect) 
-{
-  class POWERSTEP01* instancePtr = POWERSTEP01::GetInstancePtr();
-  if (instancePtr != NULL)
-  {  
-    if (instancePtr->GetShieldState(1) != INACTIVE)
-    {
-      instancePtr->StepClockHandler(1);
-    }
-  }
-}
 
 /******************************************************//**
  * @brief  Debug   function to get the amount of free ram

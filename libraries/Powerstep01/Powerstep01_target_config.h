@@ -1,167 +1,1693 @@
-/******************************************************//**
- * @file    POWERSTEP01_target_config.h
- * @version V1.0
- * @date    March 3, 2014
- * @brief   Predefines values for the POWERSTEP01 registers
- * and for the shields parameters
+/**************************************************************************//**
+  * @file    powerstep01_target_config.h
+  * @author  IPC Rennes
+  * @version V1.0.0
+  * @date    June 9, 2014
+  * @brief   Predefines values for the Powerstep01 registers
+  * and for the devices parameters
+  * @note    (C) COPYRIGHT 2014 STMicroelectronics
+  ******************************************************************************
+  * @attention
   *
- * This file is free software; you can redistribute it and/or modify
- * it under the terms of either the GNU General Public License version 2
- * or the GNU Lesser General Public License version 2.1, both as
- * published by the Free Software Foundation.
- **********************************************************/
+  * <h2><center>&copy; COPYRIGHT(c) 2014 STMicroelectronics</center></h2>
+  *
+  * Redistribution and use in source and binary forms, with or without modification,
+  * are permitted provided that the following conditions are met:
+  *   1. Redistributions of source code must retain the above copyright notice,
+  *      this list of conditions and the following disclaimer.
+  *   2. Redistributions in binary form must reproduce the above copyright notice,
+  *      this list of conditions and the following disclaimer in the documentation
+  *      and/or other materials provided with the distribution.
+  *   3. Neither the name of STMicroelectronics nor the names of its contributors
+  *      may be used to endorse or promote products derived from this software
+  *      without specific prior written permission.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  *
+  ******************************************************************************
+  */
 
 #ifndef __POWERSTEP01_TARGET_CONFIG_H
 #define __POWERSTEP01_TARGET_CONFIG_H
 
-/// The maximum number of shields in the daisy chain
-#define MAX_NUMBER_OF_SHIELDS                 (3)
+/// The maximum number of devices in the daisy chain
+#define MAX_NUMBER_OF_DEVICES                 (3)
 
-/************************ Speed Profile  *******************************/
+/****************************************************************************/
+/* Device 0                                                                 */
+/****************************************************************************/
 
-/// Acceleration rate in step/s2 for shield 0 (must be greater than 0)
-#define POWERSTEP01_CONF_PARAM_ACC_SHIELD_0        (160)
-/// Acceleration rate in step/s2 for shield 1 (must be greater than 0)
-#define POWERSTEP01_CONF_PARAM_ACC_SHIELD_1        (160)
-/// Acceleration rate in step/s2 for shield 2 (must be greater than 0)
-#define POWERSTEP01_CONF_PARAM_ACC_SHIELD_2        (160)
+/**************************** Speed Profile *********************************/
+/// Register : ACC
+/// Acceleration rate in step/s2, range 14.55 to 59590 steps/s^2
+#define POWERSTEP01_CONF_PARAM_ACC_DEVICE_0 (582)
 
-/// Deceleration rate in step/s2 for shield 0 (must be greater than 0)
-#define POWERSTEP01_CONF_PARAM_DEC_SHIELD_0        (160)
-/// Deceleration rate in step/s2 for shield 1 (must be greater than 0)
-#define POWERSTEP01_CONF_PARAM_DEC_SHIELD_1        (160)
-/// Deceleration rate in step/s2 for shield 2 (must be greater than 0)
-#define POWERSTEP01_CONF_PARAM_DEC_SHIELD_2        (160)
+/// Register : DEC
+/// Deceleration rate in step/s2, range 14.55 to 59590 steps/s^2
+#define POWERSTEP01_CONF_PARAM_DEC_DEVICE_0 (582)
 
-/// Maximum speed in step/s for shield 0 (30 step/s < Maximum speed <= 10 000 step/s )
-#define POWERSTEP01_CONF_PARAM_MAX_SPEED_SHIELD_0  (1600)
-/// Maximum speed in step/s for shield 1 (30 step/s < Maximum speed <= 10 000 step/s )
-#define POWERSTEP01_CONF_PARAM_MAX_SPEED_SHIELD_1  (1600)
-/// Maximum speed in step/s for shield 2 (30 step/s < Maximum speed <= 10 000 step/s )
-#define POWERSTEP01_CONF_PARAM_MAX_SPEED_SHIELD_2  (1600)
-/// Minimum speed in step/s for shield 0 (30 step/s <= Minimum speed < 10 000 step/s)
-#define POWERSTEP01_CONF_PARAM_MIN_SPEED_SHIELD_0  (800)
-/// Minimum speed in step/s for shield 1 (30 step/s <= Minimum speed < 10 000 step/s)
-#define POWERSTEP01_CONF_PARAM_MIN_SPEED_SHIELD_1  (800)
-/// Minimum speed in step/s for shield 2 (30 step/s <= Minimum speed < 10 000 step/s)
-#define POWERSTEP01_CONF_PARAM_MIN_SPEED_SHIELD_2  (800)
+///Register : MAX_SPEED
+/// Maximum speed in step/s, range 15.25 to 15610 steps/s
+#define POWERSTEP01_CONF_PARAM_MAX_SPEED_DEVICE_0 (488)
+
+/// Register : MIN_SPEED
+/// Minimum speed in step/s, range 0 to 976.3 steps/s
+#define POWERSTEP01_CONF_PARAM_MIN_SPEED_DEVICE_0 (0)
+
+/// Register : FS_SPD
+/// Full step speed in step/s, range 7.63 to 15625 steps/s
+#define POWERSTEP01_CONF_PARAM_FS_SPD_DEVICE_0 (244.16)
+
+/// Register : FS_SPD - field : BOOST_MODE
+/// Boost of the amplitude square wave, enum powerstep01_BoostMode_t
+#define POWERSTEP01_CONF_PARAM_BOOST_MODE_DEVICE_0 (POWERSTEP01_BOOST_MODE_OFF)
 
 
-/************************ Phase Current Control *******************************/
+/************************ Voltage mode parameters  **************************/
+/// Register : KVAL_ACC
+/// Acceleration duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_ACC_DEVICE_0 (16.02)
 
-// Current value that is assigned to the torque regulation DAC
-/// TVAL register value for shield 0 (range 31.25mA to 4000mA)
-#define POWERSTEP01_CONF_PARAM_TVAL_SHIELD_0  (250)
-/// TVAL register value for shield 1 (range 31.25mA to 4000mA)
-#define POWERSTEP01_CONF_PARAM_TVAL_SHIELD_1  (250)
-/// TVAL register value for shield 2 (range 31.25mA to 4000mA)
-#define POWERSTEP01_CONF_PARAM_TVAL_SHIELD_2  (250)
+/// Register : KVAL_DEC
+/// Deceleration duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_DEC_DEVICE_0 (16.02)
 
-/// Fall time value (T_FAST field of T_FAST register) for shield 0 (range 2us to 32us)
-#define POWERSTEP01_CONF_PARAM_FAST_STEP_SHIELD_0  (POWERSTEP01_FAST_STEP_12us)
-/// Fall time value (T_FAST field of T_FAST register) for shield 1 (range 2us to 32us)
-#define POWERSTEP01_CONF_PARAM_FAST_STEP_SHIELD_1  (POWERSTEP01_FAST_STEP_12us)
-/// Fall time value (T_FAST field of T_FAST register) for shield 2 (range 2us to 32us)
-#define POWERSTEP01_CONF_PARAM_FAST_STEP_SHIELD_2  (POWERSTEP01_FAST_STEP_12us)
+/// Register : KVAL_RUN
+/// Run duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_RUN_DEVICE_0 (16.02)
 
-/// Maximum fast decay time (T_OFF field of T_FAST register) for shield 0 (range 2us to 32us)
-#define POWERSTEP01_CONF_PARAM_TOFF_FAST_SHIELD_0  (POWERSTEP01_TOFF_FAST_8us)
-/// Maximum fast decay time (T_OFF field of T_FAST register) for shield 1 (range 2us to 32us)
-#define POWERSTEP01_CONF_PARAM_TOFF_FAST_SHIELD_1  (POWERSTEP01_TOFF_FAST_8us)
-/// Maximum fast decay time (T_OFF field of T_FAST register) for shield 2 (range 2us to 32us)
-#define POWERSTEP01_CONF_PARAM_TOFF_FAST_SHIELD_2  (POWERSTEP01_TOFF_FAST_8us)
+/// Register : KVAL_HOLD
+/// Hold duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_HOLD_DEVICE_0 (16.02)
 
-/// Minimum ON time (TON_MIN register) for shield 0 (range 0.5us to 64us)
-#define POWERSTEP01_CONF_PARAM_TON_MIN_SHIELD_0 (3)
-/// Minimum ON time (TON_MIN register) for shield 1 (range 0.5us to 64us)
-#define POWERSTEP01_CONF_PARAM_TON_MIN_SHIELD_1 (3)
-/// Minimum ON time (TON_MIN register) for shield 2 (range 0.5us to 64us)
-#define POWERSTEP01_CONF_PARAM_TON_MIN_SHIELD_2 (3)
+/// Register : CONFIG - field : EN_VSCOMP
+/// Motor Supply Voltage Compensation enabling , enum powerstep01_ConfigEnVscomp_t
+#define POWERSTEP01_CONF_PARAM_VS_COMP_DEVICE_0 (POWERSTEP01_CONFIG_VS_COMP_DISABLE)
 
-/// Minimum OFF time (TOFF_MIN register) for shield 0 (range 0.5us to 64us)
-#define POWERSTEP01_CONF_PARAM_TOFF_MIN_SHIELD_0 (21)
-/// Minimum OFF time (TOFF_MIN register) for shield 1 (range 0.5us to 64us)
-#define POWERSTEP01_CONF_PARAM_TOFF_MIN_SHIELD_1 (21)
-/// Minimum OFF time (TOFF_MIN register) for shield 2 (range 0.5us to 64us)
-#define POWERSTEP01_CONF_PARAM_TOFF_MIN_SHIELD_2 (21)
+/// Register : MIN_SPEED - field : LSPD_OPT
+/// Low speed optimization bit, enum powerstep01_LspdOpt_t
+#define POWERSTEP01_CONF_PARAM_LSPD_BIT_DEVICE_0 (POWERSTEP01_LSPD_OPT_OFF)
 
-/******************************* Others ***************************************/
+/// Register : K_THERM
+/// Thermal compensation param, range 1 to 1.46875
+#define POWERSTEP01_CONF_PARAM_K_THERM_DEVICE_0 (1)
 
-/// Overcurrent threshold settings for shield 0 (OCD_TH register)
-#define POWERSTEP01_CONF_PARAM_OCD_TH_SHIELD_0  (POWERSTEP01_OCD_TH_750mV)
-/// Overcurrent threshold settings for shield 1 (OCD_TH register)
-#define POWERSTEP01_CONF_PARAM_OCD_TH_SHIELD_1  (POWERSTEP01_OCD_TH_750mV)
-/// Overcurrent threshold settings for shield 2 (OCD_TH register)
-#define POWERSTEP01_CONF_PARAM_OCD_TH_SHIELD_2  (POWERSTEP01_OCD_TH_750mV)
+/// Register : INT_SPEED
+/// Intersect speed settings for BEMF compensation in steps/s, range 0 to 3906 steps/s
+#define POWERSTEP01_CONF_PARAM_INT_SPD_DEVICE_0 (61.512)
 
-/// Alarm settings for shield 0 (ALARM_EN register)
-#define POWERSTEP01_CONF_PARAM_ALARM_EN_SHIELD_0  (POWERSTEP01_ALARM_EN_OVERCURRENT |\
-                                                POWERSTEP01_ALARM_EN_THERMAL_SHUTDOWN |\
-                                                POWERSTEP01_ALARM_EN_THERMAL_WARNING |\
-                                                POWERSTEP01_ALARM_EN_SW_TURN_ON |\
-                                                POWERSTEP01_ALARM_EN_WRONG_NPERF_CMD)
+/// Register : ST_SLP
+/// BEMF start slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_ST_SLP_DEVICE_0 (0.03815)
 
-///Alarm settings for shield 1 (ALARM_EN register)
-#define POWERSTEP01_CONF_PARAM_ALARM_EN_SHIELD_1  (POWERSTEP01_ALARM_EN_OVERCURRENT |\
-                                                POWERSTEP01_ALARM_EN_THERMAL_SHUTDOWN |\
-                                                POWERSTEP01_ALARM_EN_THERMAL_WARNING |\
-                                                POWERSTEP01_ALARM_EN_SW_TURN_ON |\
-                                                POWERSTEP01_ALARM_EN_WRONG_NPERF_CMD)
+/// Register : FN_SLP_ACC
+/// BEMF final acc slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_FN_SLP_ACC_DEVICE_0 (0.06256)
 
-/// Alarm settings for shield 2 (ALARM_EN register)
-#define POWERSTEP01_CONF_PARAM_ALARM_EN_SHIELD_2  (POWERSTEP01_ALARM_EN_OVERCURRENT |\
-                                                POWERSTEP01_ALARM_EN_THERMAL_SHUTDOWN |\
-                                                POWERSTEP01_ALARM_EN_THERMAL_WARNING |\
-                                                POWERSTEP01_ALARM_EN_SW_TURN_ON |\
-                                                POWERSTEP01_ALARM_EN_WRONG_NPERF_CMD)
+/// Register : FN_SLP_DEC
+/// BEMF final dec slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_FN_SLP_DEC_DEVICE_0 (0.06256)
 
-/// Step selection settings for shield 0 (STEP_SEL field of STEP_MODE register)
-#define POWERSTEP01_CONF_PARAM_STEP_SEL_SHIELD_0  (POWERSTEP01_STEP_SEL_1_16)
-/// Step selection settings for shield 1 (STEP_SEL field of STEP_MODE register)
-#define POWERSTEP01_CONF_PARAM_STEP_SEL_SHIELD_1  (POWERSTEP01_STEP_SEL_1_16)
-/// Step selection settings for shield 2 (STEP_SEL field of STEP_MODE register)
-#define POWERSTEP01_CONF_PARAM_STEP_SEL_SHIELD_2  (POWERSTEP01_STEP_SEL_1_16)
+/// Register : CONFIG - field : F_PWM_INT
+/// PWM Frequency Integer division, enum powerstep01_ConfigFPwmInt_t
+#define POWERSTEP01_CONF_PARAM_PWM_DIV_DEVICE_0 (POWERSTEP01_CONFIG_PWM_DIV_2)
 
-/// Synch. selection settings for shield 0 (SYNC_SEL field of STEP_MODE register)
-#define POWERSTEP01_CONF_PARAM_SYNC_SEL_SHIELD_0  (POWERSTEP01_SYNC_SEL_1_2)
-/// Synch. selection settings for shield 1 (SYNC_SEL field of STEP_MODE register)
-#define POWERSTEP01_CONF_PARAM_SYNC_SEL_SHIELD_1  (POWERSTEP01_SYNC_SEL_1_2)
-/// Synch. selection settings for shield 2 (SYNC_SEL field of STEP_MODE register)
-#define POWERSTEP01_CONF_PARAM_SYNC_SEL_SHIELD_2  (POWERSTEP01_SYNC_SEL_1_2)
+/// Register : CONFIG - field : F_PWM_DEC
+/// PWM Frequency Integer Multiplier, enum powerstep01_ConfigFPwmDec_t
+#define POWERSTEP01_CONF_PARAM_PWM_MUL_DEVICE_0 (POWERSTEP01_CONFIG_PWM_MUL_1)
 
-/// Target Swicthing Period for shield 0 (field TOFF of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_TOFF_SHIELD_0  (POWERSTEP01_CONFIG_TOFF_044us)
-/// Target Swicthing Period for shield 1 (field TOFF of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_TOFF_SHIELD_1  (POWERSTEP01_CONFIG_TOFF_044us)
-/// Target Swicthing Period for shield 2 (field TOFF of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_TOFF_SHIELD_2  (POWERSTEP01_CONFIG_TOFF_044us)
+/******************** Advance current control parameters  *********************/
 
-/// Slew rate for shield 0 (POW_SR field of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_SR_SHIELD_0  (POWERSTEP01_CONFIG_SR_320V_us)
-/// Slew rate for shield 1 (POW_SR field of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_SR_SHIELD_1  (POWERSTEP01_CONFIG_SR_320V_us)
-/// Slew rate for shield 2 (POW_SR field of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_SR_SHIELD_2  (POWERSTEP01_CONFIG_SR_320V_us)
+/// Register : TVAL_ACC
+/// Acceleration torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_ACC_DEVICE_0  (328.12)
 
-/// Over current shutwdown enabling for shield 0 (OC_SD field of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_OC_SD_SHIELD_0  (POWERSTEP01_CONFIG_OC_SD_ENABLE)
-/// Over current shutwdown enabling for shield 1 (OC_SD field of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_OC_SD_SHIELD_1  (POWERSTEP01_CONFIG_OC_SD_ENABLE)
-/// Over current shutwdown enabling for shield 2 (OC_SD field of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_OC_SD_SHIELD_2  (POWERSTEP01_CONFIG_OC_SD_ENABLE)
+/// Register : TVAL_DEC
+/// Deceleration torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_DEC_DEVICE_0  (328.12)
 
-/// Torque regulation method for shield 0 (EN_TQREG field of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_TQ_REG_SHIELD_0  (POWERSTEP01_CONFIG_TQ_REG_TVAL_USED)
-///Torque regulation method for shield 1 (EN_TQREG field of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_TQ_REG_SHIELD_1  (POWERSTEP01_CONFIG_TQ_REG_TVAL_USED)
-/// Torque regulation method for shield 2 (EN_TQREG field of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_TQ_REG_SHIELD_2  (POWERSTEP01_CONFIG_TQ_REG_TVAL_USED)
+/// Register : TVAL_RUN
+/// Running torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_RUN_DEVICE_0  (328.12)
 
-/// Clock setting for shield 0 (OSC_CLK_SEL field of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_CLOCK_SETTING_SHIELD_0  (POWERSTEP01_CONFIG_INT_16MHZ)
-/// Clock setting for shield 1 (OSC_CLK_SEL field of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_CLOCK_SETTING_SHIELD_1  (POWERSTEP01_CONFIG_INT_16MHZ)
-/// Clock setting for shield 2 (OSC_CLK_SEL field of CONFIG register)
-#define POWERSTEP01_CONF_PARAM_CLOCK_SETTING_SHIELD_2  (POWERSTEP01_CONFIG_INT_16MHZ)
+/// Register : TVAL_HOLD
+/// Holding torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_HOLD_DEVICE_0 (328.12)
 
-#endif /* __Powerstep01_TARGET_CONFIG_H */
+/// Register : CONFIG - field : EN_TQREG
+/// External torque regulation enabling , enum powerstep01_ConfigEnTqReg_t
+#define POWERSTEP01_CONF_PARAM_TQ_REG_DEVICE_0 (POWERSTEP01_CONFIG_TQ_REG_TVAL_USED)
+
+/// Register : CONFIG - field : PRED_EN
+/// Predictive current enabling , enum powerstep01_ConfigPredEn_t
+#define POWERSTEP01_CONF_PARAM_PRED_EN_DEVICE_0 (POWERSTEP01_CONFIG_PRED_DISABLE)
+
+///  Register : TON_MIN
+///  Minimum on-time in us, range 0.5us to 64us
+#define POWERSTEP01_CONF_PARAM_TON_MIN_DEVICE_0 (3.0)
+
+/// Register : TOFF_MIN
+///  Minimum off-time in us, range 0.5us to 64us
+#define POWERSTEP01_CONF_PARAM_TOFF_MIN_DEVICE_0 (21.0)
+
+/// Register : T_FAST - field: TOFF_FAST
+/// Maximum fast decay time , enum powerstep01_ToffFast_t
+#define POWERSTEP01_CONF_PARAM_TOFF_FAST_DEVICE_0  (POWERSTEP01_TOFF_FAST_8us)
+
+/// Register : T_FAST - field: FAST_STEP
+///  Maximum fall step time , enum powerstep01_FastStep_t
+#define POWERSTEP01_CONF_PARAM_FAST_STEP_DEVICE_0  (POWERSTEP01_FAST_STEP_12us)
+
+/// Register : CONFIG - field : TSW
+/// Switching period, enum powerstep01_ConfigTsw_t
+#define POWERSTEP01_CONF_PARAM_TSW_DEVICE_0 (POWERSTEP01_CONFIG_TSW_048us)
+
+/****************************** Gate Driving **********************************/
+
+/// Register : GATECFG1 - field : IGATE
+/// Gate sink/source current via enum powerstep01_Igate_t
+#define POWERSTEP01_CONF_PARAM_IGATE_DEVICE_0      (POWERSTEP01_IGATE_64mA)
+
+/// Register : CONFIG - field : VCCVAL
+/// VCC Val, enum powerstep01_ConfigVccVal_t
+#define POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_0 (POWERSTEP01_CONFIG_VCCVAL_15V)
+
+/// Register : CONFIG - field : UVLOVAL
+/// UVLO Threshold via powerstep01_ConfigUvLoVal_t
+#define POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_0    (POWERSTEP01_CONFIG_UVLOVAL_LOW)
+
+/// Register : GATECFG1 - field : TBOOST
+/// Duration of the overboost phase during gate turn-off via enum powerstep01_Tboost_t
+#define POWERSTEP01_CONF_PARAM_TBOOST_DEVICE_0     (POWERSTEP01_TBOOST_0ns)
+
+/// Register : GATECFG1 - field : TCC
+/// Controlled current time via enum powerstep01_Tcc_t
+#define POWERSTEP01_CONF_PARAM_TCC_DEVICE_0        (POWERSTEP01_TCC_500ns)
+
+/// Duration of the blanking time via enum powerstep01_TBlank_t
+#define POWERSTEP01_CONF_PARAM_TBLANK_DEVICE_0     (POWERSTEP01_TBLANK_375ns)
+
+/// Register : GATECFG2 - field : TDT
+/// Duration of the dead time via enum powerstep01_Tdt_t
+#define POWERSTEP01_CONF_PARAM_TDT_DEVICE_0        (POWERSTEP01_TDT_125ns)
+
+/******************************* Others *************************************/
+
+/// Register : OCD_TH
+/// Overcurrent threshold settings via enum powerstep01_OcdTh_t
+#define POWERSTEP01_CONF_PARAM_OCD_TH_DEVICE_0 (POWERSTEP01_OCD_TH_281_25mV)
+
+/// Register : CONFIG - field : OC_SD
+/// Over current shutwdown enabling, enum powerstep01_ConfigOcSd_t
+#define POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_0 (POWERSTEP01_CONFIG_OC_SD_DISABLE)
+
+/// Register : STALL_TH
+/// Stall threshold settings in mV, range 31.25mV to 1000mV
+#define POWERSTEP01_CONF_PARAM_STALL_TH_DEVICE_0 (531.25)
+
+/// Register : ALARM_EN
+/// Alarm settings via bitmap enum powerstep01_AlarmEn_t
+#define POWERSTEP01_CONF_PARAM_ALARM_EN_DEVICE_0 (POWERSTEP01_ALARM_EN_OVERCURRENT | \
+                                                  POWERSTEP01_ALARM_EN_THERMAL_SHUTDOWN |  \
+                                                  POWERSTEP01_ALARM_EN_THERMAL_WARNING |  \
+                                                  POWERSTEP01_ALARM_EN_UVLO |  \
+                                                  POWERSTEP01_ALARM_EN_STALL_DETECTION |  \
+                                                  POWERSTEP01_ALARM_EN_SW_TURN_ON | \
+                                                  POWERSTEP01_ALARM_EN_WRONG_NPERF_CMD)
+
+/// Register : CONFIG - field : SW_MODE
+/// External switch hard stop interrupt mode, enum powerstep01_ConfigSwMode_t
+#define POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_0 (POWERSTEP01_CONFIG_SW_HARD_STOP)
+
+/// Register : STEP_MODE - field : STEP_MODE
+/// Step mode settings via enum motorStepMode_t
+#define POWERSTEP01_CONF_PARAM_STEP_MODE_DEVICE_0 (STEP_MODE_1_16)
+
+/// Register : STEP_MODE - field : CM_VM
+/// Current mode or Voltage mode via enum powerstep01_CmVm_t
+#define POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_0 (POWERSTEP01_CM_VM_CURRENT)
+
+/// Register : STEP_MODE - Field : SYNC_MODE and SYNC_EN
+/// Synch. Mode settings via enum powerstep01_SyncSel_t
+#define POWERSTEP01_CONF_PARAM_SYNC_MODE_DEVICE_0 (POWERSTEP01_SYNC_SEL_DISABLED)
+
+/// Register : CONFIG - field : OSC_CLK_SEL
+/// Clock setting , enum powerstep01_ConfigOscMgmt_t
+#define POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_0 (POWERSTEP01_CONFIG_INT_16MHZ_OSCOUT_2MHZ)
+
+/// Register : GATECFG1 - field : WD_EN
+/// External clock watchdog, enum powerstep01_WdEn_t
+#define POWERSTEP01_CONF_PARAM_WD_EN_DEVICE_0 (POWERSTEP01_WD_EN_DISABLE)
+
+/****************************************************************************/
+/* Device 1                                                                 */
+/****************************************************************************/
+
+/**************************** Speed Profile *********************************/
+/// Register : ACC
+/// Acceleration rate in step/s2, range 14.55 to 59590 steps/s^2
+#define POWERSTEP01_CONF_PARAM_ACC_DEVICE_1 (2008.16)
+
+/// Register : DEC
+/// Deceleration rate in step/s2, range 14.55 to 59590 steps/s^2
+#define POWERSTEP01_CONF_PARAM_DEC_DEVICE_1 (2008.16)
+
+///Register : MAX_SPEED
+/// Maximum speed in step/s, range 15.25 to 15610 steps/s
+#define POWERSTEP01_CONF_PARAM_MAX_SPEED_DEVICE_1 (991.82)
+
+/// Register : MIN_SPEED
+/// Minimum speed in step/s, range 0 to 976.3 steps/s
+#define POWERSTEP01_CONF_PARAM_MIN_SPEED_DEVICE_1 (0)
+
+/// Register : FS_SPD
+/// Full step speed in step/s, range 7.63 to 15625 steps/s
+#define POWERSTEP01_CONF_PARAM_FS_SPD_DEVICE_1 (595.09)
+
+/// Register : FS_SPD - field : BOOST_MODE
+/// Boost of the amplitude square wave, enum powerstep01_BoostMode_t
+#define POWERSTEP01_CONF_PARAM_BOOST_MODE_DEVICE_1 (POWERSTEP01_BOOST_MODE_OFF)
+
+
+/************************ Voltage mode parameters  **************************/
+/// Register : KVAL_ACC
+/// Acceleration duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_ACC_DEVICE_1 (16.02)
+
+/// Register : KVAL_DEC
+/// Deceleration duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_DEC_DEVICE_1 (16.02)
+
+/// Register : KVAL_RUN
+/// Run duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_RUN_DEVICE_1 (16.02)
+
+/// Register : KVAL_HOLD
+/// Hold duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_HOLD_DEVICE_1 (16.02)
+
+/// Register : CONFIG - field : EN_VSCOMP
+/// Motor Supply Voltage Compensation enabling , enum powerstep01_ConfigEnVscomp_t
+#define POWERSTEP01_CONF_PARAM_VS_COMP_DEVICE_1 (POWERSTEP01_CONFIG_VS_COMP_DISABLE)
+
+/// Register : MIN_SPEED - field : LSPD_OPT
+/// Low speed optimization bit, enum powerstep01_LspdOpt_t
+#define POWERSTEP01_CONF_PARAM_LSPD_BIT_DEVICE_1 (POWERSTEP01_LSPD_OPT_OFF)
+
+/// Register : K_THERM
+/// Thermal compensation param, range 1 to 1.46875
+#define POWERSTEP01_CONF_PARAM_K_THERM_DEVICE_1 (1)
+
+/// Register : INT_SPEED
+/// Intersect speed settings for BEMF compensation in steps/s, range 0 to 3906 steps/s
+#define POWERSTEP01_CONF_PARAM_INT_SPD_DEVICE_1 (61.512)
+
+/// Register : ST_SLP
+/// BEMF start slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_ST_SLP_DEVICE_1 (0.03815)
+
+/// Register : FN_SLP_ACC
+/// BEMF final acc slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_FN_SLP_ACC_DEVICE_1 (0.06256)
+
+/// Register : FN_SLP_DEC
+/// BEMF final dec slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_FN_SLP_DEC_DEVICE_1 (0.06256)
+
+/// Register : CONFIG - field : F_PWM_INT
+/// PWM Frequency Integer division, enum powerstep01_ConfigFPwmInt_t
+#define POWERSTEP01_CONF_PARAM_PWM_DIV_DEVICE_1 (POWERSTEP01_CONFIG_PWM_DIV_2)
+
+/// Register : CONFIG - field : F_PWM_DEC
+/// PWM Frequency Integer Multiplier, enum powerstep01_ConfigFPwmDec_t
+#define POWERSTEP01_CONF_PARAM_PWM_MUL_DEVICE_1 (POWERSTEP01_CONFIG_PWM_MUL_1)
+
+/******************** Advance current control parameters  *********************/
+
+/// Register : TVAL_ACC
+/// Acceleration torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_ACC_DEVICE_1  (328.12)
+
+/// Register : TVAL_DEC
+/// Deceleration torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_DEC_DEVICE_1  (328.12)
+
+/// Register : TVAL_RUN
+/// Running torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_RUN_DEVICE_1  (328.12)
+
+/// Register : TVAL_HOLD
+/// Holding torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_HOLD_DEVICE_1 (328.12)
+
+/// Register : CONFIG - field : EN_TQREG
+/// External torque regulation enabling , enum powerstep01_ConfigEnTqReg_t
+#define POWERSTEP01_CONF_PARAM_TQ_REG_DEVICE_1 (POWERSTEP01_CONFIG_TQ_REG_TVAL_USED)
+
+/// Register : CONFIG - field : PRED_EN
+/// Predictive current enabling , enum powerstep01_ConfigPredEn_t
+#define POWERSTEP01_CONF_PARAM_PRED_EN_DEVICE_1 (POWERSTEP01_CONFIG_PRED_DISABLE)
+
+///  Register : TON_MIN
+///  Minimum on-time in us, range 0.5us to 64us
+#define POWERSTEP01_CONF_PARAM_TON_MIN_DEVICE_1 (3.0)
+
+/// Register : TOFF_MIN
+///  Minimum off-time in us, range 0.5us to 64us
+#define POWERSTEP01_CONF_PARAM_TOFF_MIN_DEVICE_1 (21.0)
+
+/// Register : T_FAST - field: TOFF_FAST
+/// Maximum fast decay time , enum powerstep01_ToffFast_t
+#define POWERSTEP01_CONF_PARAM_TOFF_FAST_DEVICE_1  (POWERSTEP01_TOFF_FAST_8us)
+
+/// Register : T_FAST - field: FAST_STEP
+///  Maximum fall step time , enum powerstep01_FastStep_t
+#define POWERSTEP01_CONF_PARAM_FAST_STEP_DEVICE_1  (POWERSTEP01_FAST_STEP_12us)
+
+/// Register : CONFIG - field : TSW
+/// Switching period, enum powerstep01_ConfigTsw_t
+#define POWERSTEP01_CONF_PARAM_TSW_DEVICE_1 (POWERSTEP01_CONFIG_TSW_048us)
+
+/****************************** Gate Driving **********************************/
+
+/// Register : GATECFG1 - field : IGATE
+/// Gate sink/source current via enum powerstep01_Igate_t
+#define POWERSTEP01_CONF_PARAM_IGATE_DEVICE_1      (POWERSTEP01_IGATE_64mA)
+
+/// Register : CONFIG - field : VCCVAL
+/// VCC Val, enum powerstep01_ConfigVccVal_t
+#define POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_1 (POWERSTEP01_CONFIG_VCCVAL_15V)
+
+/// Register : CONFIG - field : UVLOVAL
+/// UVLO Threshold via powerstep01_ConfigUvLoVal_t
+#define POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_1    (POWERSTEP01_CONFIG_UVLOVAL_LOW)
+
+/// Register : GATECFG1 - field : TBOOST
+/// Duration of the overboost phase during gate turn-off via enum powerstep01_Tboost_t
+#define POWERSTEP01_CONF_PARAM_TBOOST_DEVICE_1     (POWERSTEP01_TBOOST_0ns)
+
+/// Register : GATECFG1 - field : TCC
+/// Controlled current time via enum powerstep01_Tcc_t
+#define POWERSTEP01_CONF_PARAM_TCC_DEVICE_1        (POWERSTEP01_TCC_500ns)
+
+/// Duration of the blanking time via enum powerstep01_TBlank_t
+#define POWERSTEP01_CONF_PARAM_TBLANK_DEVICE_1     (POWERSTEP01_TBLANK_375ns)
+
+/// Register : GATECFG2 - field : TDT
+/// Duration of the dead time via enum powerstep01_Tdt_t
+#define POWERSTEP01_CONF_PARAM_TDT_DEVICE_1        (POWERSTEP01_TDT_125ns)
+
+/******************************* Others *************************************/
+
+/// Register : OCD_TH
+/// Overcurrent threshold settings via enum powerstep01_OcdTh_t
+#define POWERSTEP01_CONF_PARAM_OCD_TH_DEVICE_1 (POWERSTEP01_OCD_TH_281_25mV)
+
+/// Register : CONFIG - field : OC_SD
+/// Over current shutwdown enabling, enum powerstep01_ConfigOcSd_t
+#define POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_1 (POWERSTEP01_CONFIG_OC_SD_DISABLE)
+
+/// Register : STALL_TH
+/// Stall threshold settings in mV, range 31.25mV to 1000mV
+#define POWERSTEP01_CONF_PARAM_STALL_TH_DEVICE_1 (531.25)
+
+/// Register : ALARM_EN
+/// Alarm settings via bitmap enum powerstep01_AlarmEn_t
+#define POWERSTEP01_CONF_PARAM_ALARM_EN_DEVICE_1 (POWERSTEP01_ALARM_EN_OVERCURRENT | \
+                                                  POWERSTEP01_ALARM_EN_THERMAL_SHUTDOWN |  \
+                                                  POWERSTEP01_ALARM_EN_THERMAL_WARNING |  \
+                                                  POWERSTEP01_ALARM_EN_UVLO |  \
+                                                  POWERSTEP01_ALARM_EN_STALL_DETECTION |  \
+                                                  POWERSTEP01_ALARM_EN_SW_TURN_ON | \
+                                                  POWERSTEP01_ALARM_EN_WRONG_NPERF_CMD)
+
+/// Register : CONFIG - field : SW_MODE
+/// External switch hard stop interrupt mode, enum powerstep01_ConfigSwMode_t
+#define POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_1 (POWERSTEP01_CONFIG_SW_HARD_STOP)
+
+/// Register : STEP_MODE - field : STEP_MODE
+/// Step mode settings via enum powerstep01_StepSel_t
+#define POWERSTEP01_CONF_PARAM_STEP_MODE_DEVICE_1 (STEP_MODE_1_16)
+
+/// Register : STEP_MODE - field : CM_VM
+/// Current mode or Voltage mode via enum powerstep01_CmVm_t
+#define POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_1 (POWERSTEP01_CM_VM_CURRENT)
+
+/// Register : STEP_MODE - Field : SYNC_MODE and SYNC_EN
+/// Synch. Mode settings via enum powerstep01_SyncSel_t
+#define POWERSTEP01_CONF_PARAM_SYNC_MODE_DEVICE_1 (POWERSTEP01_SYNC_SEL_DISABLED)
+
+/// Register : CONFIG - field : OSC_CLK_SEL
+/// Clock setting , enum powerstep01_ConfigOscMgmt_t
+#define POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_1 (POWERSTEP01_CONFIG_INT_16MHZ_OSCOUT_2MHZ)
+
+/// Register : GATECFG1 - field : WD_EN
+/// External clock watchdog, enum powerstep01_WdEn_t
+#define POWERSTEP01_CONF_PARAM_WD_EN_DEVICE_1 (POWERSTEP01_WD_EN_DISABLE)
+
+/****************************************************************************/
+/* Device 2                                                                 */
+/****************************************************************************/
+
+/**************************** Speed Profile *********************************/
+/// Register : ACC
+/// Acceleration rate in step/s2, range 14.55 to 59590 steps/s^2
+#define POWERSTEP01_CONF_PARAM_ACC_DEVICE_2 (2008.16)
+
+/// Register : DEC
+/// Deceleration rate in step/s2, range 14.55 to 59590 steps/s^2
+#define POWERSTEP01_CONF_PARAM_DEC_DEVICE_2 (2008.16)
+
+///Register : MAX_SPEED
+/// Maximum speed in step/s, range 15.25 to 15610 steps/s
+#define POWERSTEP01_CONF_PARAM_MAX_SPEED_DEVICE_2 (991.82)
+
+/// Register : MIN_SPEED
+/// Minimum speed in step/s, range 0 to 976.3 steps/s
+#define POWERSTEP01_CONF_PARAM_MIN_SPEED_DEVICE_2 (0)
+
+/// Register : FS_SPD
+/// Full step speed in step/s, range 7.63 to 15625 steps/s
+#define POWERSTEP01_CONF_PARAM_FS_SPD_DEVICE_2 (595.09)
+
+/// Register : FS_SPD - field : BOOST_MODE
+/// Boost of the amplitude square wave, enum powerstep01_BoostMode_t
+#define POWERSTEP01_CONF_PARAM_BOOST_MODE_DEVICE_2 (POWERSTEP01_BOOST_MODE_OFF)
+
+
+/************************ Voltage mode parameters  **************************/
+/// Register : KVAL_ACC
+/// Acceleration duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_ACC_DEVICE_2 (16.02)
+
+/// Register : KVAL_DEC
+/// Deceleration duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_DEC_DEVICE_2 (16.02)
+
+/// Register : KVAL_RUN
+/// Run duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_RUN_DEVICE_2 (16.02)
+
+/// Register : KVAL_HOLD
+/// Hold duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_HOLD_DEVICE_2 (16.02)
+
+/// Register : CONFIG - field : EN_VSCOMP
+/// Motor Supply Voltage Compensation enabling , enum powerstep01_ConfigEnVscomp_t
+#define POWERSTEP01_CONF_PARAM_VS_COMP_DEVICE_2 (POWERSTEP01_CONFIG_VS_COMP_DISABLE)
+
+/// Register : MIN_SPEED - field : LSPD_OPT
+/// Low speed optimization bit, enum powerstep01_LspdOpt_t
+#define POWERSTEP01_CONF_PARAM_LSPD_BIT_DEVICE_2 (POWERSTEP01_LSPD_OPT_OFF)
+
+/// Register : K_THERM
+/// Thermal compensation param, range 1 to 1.46875
+#define POWERSTEP01_CONF_PARAM_K_THERM_DEVICE_2 (1)
+
+/// Register : INT_SPEED
+/// Intersect speed settings for BEMF compensation in steps/s, range 0 to 3906 steps/s
+#define POWERSTEP01_CONF_PARAM_INT_SPD_DEVICE_2 (61.512)
+
+/// Register : ST_SLP
+/// BEMF start slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_ST_SLP_DEVICE_2 (0.03815)
+
+/// Register : FN_SLP_ACC
+/// BEMF final acc slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_FN_SLP_ACC_DEVICE_2 (0.06256)
+
+/// Register : FN_SLP_DEC
+/// BEMF final dec slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_FN_SLP_DEC_DEVICE_2 (0.06256)
+
+/// Register : CONFIG - field : F_PWM_INT
+/// PWM Frequency Integer division, enum powerstep01_ConfigFPwmInt_t
+#define POWERSTEP01_CONF_PARAM_PWM_DIV_DEVICE_2 (POWERSTEP01_CONFIG_PWM_DIV_2)
+
+/// Register : CONFIG - field : F_PWM_DEC
+/// PWM Frequency Integer Multiplier, enum powerstep01_ConfigFPwmDec_t
+#define POWERSTEP01_CONF_PARAM_PWM_MUL_DEVICE_2 (POWERSTEP01_CONFIG_PWM_MUL_1)
+
+/******************** Advance current control parameters  *********************/
+
+/// Register : TVAL_ACC
+/// Acceleration torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_ACC_DEVICE_2  (328.12)
+
+/// Register : TVAL_DEC
+/// Deceleration torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_DEC_DEVICE_2  (328.12)
+
+/// Register : TVAL_RUN
+/// Running torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_RUN_DEVICE_2  (328.12)
+
+/// Register : TVAL_HOLD
+/// Holding torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_HOLD_DEVICE_2 (328.12)
+
+/// Register : CONFIG - field : EN_TQREG
+/// External torque regulation enabling , enum powerstep01_ConfigEnTqReg_t
+#define POWERSTEP01_CONF_PARAM_TQ_REG_DEVICE_2 (POWERSTEP01_CONFIG_TQ_REG_TVAL_USED)
+
+/// Register : CONFIG - field : PRED_EN
+/// Predictive current enabling , enum powerstep01_ConfigPredEn_t
+#define POWERSTEP01_CONF_PARAM_PRED_EN_DEVICE_2 (POWERSTEP01_CONFIG_PRED_DISABLE)
+
+///  Register : TON_MIN
+///  Minimum on-time in us, range 0.5us to 64us
+#define POWERSTEP01_CONF_PARAM_TON_MIN_DEVICE_2 (3.0)
+
+/// Register : TOFF_MIN
+///  Minimum off-time in us, range 0.5us to 64us
+#define POWERSTEP01_CONF_PARAM_TOFF_MIN_DEVICE_2 (21.0)
+
+/// Register : T_FAST - field: TOFF_FAST
+/// Maximum fast decay time , enum powerstep01_ToffFast_t
+#define POWERSTEP01_CONF_PARAM_TOFF_FAST_DEVICE_2  (POWERSTEP01_TOFF_FAST_8us)
+
+/// Register : T_FAST - field: FAST_STEP
+///  Maximum fall step time , enum powerstep01_FastStep_t
+#define POWERSTEP01_CONF_PARAM_FAST_STEP_DEVICE_2  (POWERSTEP01_FAST_STEP_12us)
+
+/// Register : CONFIG - field : TSW
+/// Switching period, enum powerstep01_ConfigTsw_t
+#define POWERSTEP01_CONF_PARAM_TSW_DEVICE_2 (POWERSTEP01_CONFIG_TSW_048us)
+
+/****************************** Gate Driving **********************************/
+
+/// Register : GATECFG1 - field : IGATE
+/// Gate sink/source current via enum powerstep01_Igate_t
+#define POWERSTEP01_CONF_PARAM_IGATE_DEVICE_2      (POWERSTEP01_IGATE_64mA)
+
+/// Register : CONFIG - field : VCCVAL
+/// VCC Val, enum powerstep01_ConfigVccVal_t
+#define POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_2 (POWERSTEP01_CONFIG_VCCVAL_15V)
+
+/// Register : CONFIG - field : UVLOVAL
+/// UVLO Threshold via powerstep01_ConfigUvLoVal_t
+#define POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_2    (POWERSTEP01_CONFIG_UVLOVAL_LOW)
+
+/// Register : GATECFG1 - field : TBOOST
+/// Duration of the overboost phase during gate turn-off via enum powerstep01_Tboost_t
+#define POWERSTEP01_CONF_PARAM_TBOOST_DEVICE_2     (POWERSTEP01_TBOOST_0ns)
+
+/// Register : GATECFG1 - field : TCC
+/// Controlled current time via enum powerstep01_Tcc_t
+#define POWERSTEP01_CONF_PARAM_TCC_DEVICE_2        (POWERSTEP01_TCC_500ns)
+
+/// Duration of the blanking time via enum powerstep01_TBlank_t
+#define POWERSTEP01_CONF_PARAM_TBLANK_DEVICE_2     (POWERSTEP01_TBLANK_375ns)
+
+/// Register : GATECFG2 - field : TDT
+/// Duration of the dead time via enum powerstep01_Tdt_t
+#define POWERSTEP01_CONF_PARAM_TDT_DEVICE_2        (POWERSTEP01_TDT_125ns)
+
+/******************************* Others *************************************/
+
+/// Register : OCD_TH
+/// Overcurrent threshold settings via enum powerstep01_OcdTh_t
+#define POWERSTEP01_CONF_PARAM_OCD_TH_DEVICE_2 (POWERSTEP01_OCD_TH_281_25mV)
+
+/// Register : CONFIG - field : OC_SD
+/// Over current shutwdown enabling, enum powerstep01_ConfigOcSd_t
+#define POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_2 (POWERSTEP01_CONFIG_OC_SD_DISABLE)
+
+/// Register : STALL_TH
+/// Stall threshold settings in mV, range 31.25mV to 1000mV
+#define POWERSTEP01_CONF_PARAM_STALL_TH_DEVICE_2 (531.25)
+
+/// Register : ALARM_EN
+/// Alarm settings via bitmap enum powerstep01_AlarmEn_t
+#define POWERSTEP01_CONF_PARAM_ALARM_EN_DEVICE_2 (POWERSTEP01_ALARM_EN_OVERCURRENT | \
+                                                  POWERSTEP01_ALARM_EN_THERMAL_SHUTDOWN |  \
+                                                  POWERSTEP01_ALARM_EN_THERMAL_WARNING |  \
+                                                  POWERSTEP01_ALARM_EN_UVLO |  \
+                                                  POWERSTEP01_ALARM_EN_STALL_DETECTION |  \
+                                                  POWERSTEP01_ALARM_EN_SW_TURN_ON | \
+                                                  POWERSTEP01_ALARM_EN_WRONG_NPERF_CMD)
+
+/// Register : CONFIG - field : SW_MODE
+/// External switch hard stop interrupt mode, enum powerstep01_ConfigSwMode_t
+#define POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_2 (POWERSTEP01_CONFIG_SW_HARD_STOP)
+
+/// Register : STEP_MODE - field : STEP_MODE
+/// Step mode settings via enum powerstep01_StepSel_t
+#define POWERSTEP01_CONF_PARAM_STEP_MODE_DEVICE_2 (STEP_MODE_1_16)
+
+/// Register : STEP_MODE - field : CM_VM
+/// Current mode or Voltage mode via enum powerstep01_CmVm_t
+#define POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_2 (POWERSTEP01_CM_VM_CURRENT)
+
+/// Register : STEP_MODE - Field : SYNC_MODE and SYNC_EN
+/// Synch. Mode settings via enum powerstep01_SyncSel_t
+#define POWERSTEP01_CONF_PARAM_SYNC_MODE_DEVICE_2 (POWERSTEP01_SYNC_SEL_DISABLED)
+
+/// Register : CONFIG - field : OSC_CLK_SEL
+/// Clock setting , enum powerstep01_ConfigOscMgmt_t
+#define POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_2 (POWERSTEP01_CONFIG_INT_16MHZ_OSCOUT_2MHZ)
+
+/// Register : GATECFG1 - field : WD_EN
+/// External clock watchdog, enum powerstep01_WdEn_t
+#define POWERSTEP01_CONF_PARAM_WD_EN_DEVICE_2 (POWERSTEP01_WD_EN_DISABLE)
+
+/****************************************************************************/
+/* Device 3                                                                 */
+/****************************************************************************/
+
+/**************************** Speed Profile *********************************/
+/// Register : ACC
+/// Acceleration rate in step/s2, range 14.55 to 59590 steps/s^2
+#define POWERSTEP01_CONF_PARAM_ACC_DEVICE_3 (2008.16)
+
+/// Register : DEC
+/// Deceleration rate in step/s2, range 14.55 to 59590 steps/s^2
+#define POWERSTEP01_CONF_PARAM_DEC_DEVICE_3 (2008.16)
+
+///Register : MAX_SPEED
+/// Maximum speed in step/s, range 15.25 to 15610 steps/s
+#define POWERSTEP01_CONF_PARAM_MAX_SPEED_DEVICE_3 (991.82)
+
+/// Register : MIN_SPEED
+/// Minimum speed in step/s, range 0 to 976.3 steps/s
+#define POWERSTEP01_CONF_PARAM_MIN_SPEED_DEVICE_3 (0)
+
+/// Register : FS_SPD
+/// Full step speed in step/s, range 7.63 to 15625 steps/s
+#define POWERSTEP01_CONF_PARAM_FS_SPD_DEVICE_3 (595.09)
+
+/// Register : FS_SPD - field : BOOST_MODE
+/// Boost of the amplitude square wave, enum powerstep01_BoostMode_t
+#define POWERSTEP01_CONF_PARAM_BOOST_MODE_DEVICE_3 (POWERSTEP01_BOOST_MODE_OFF)
+
+
+/************************ Voltage mode parameters  **************************/
+/// Register : KVAL_ACC
+/// Acceleration duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_ACC_DEVICE_3 (16.02)
+
+/// Register : KVAL_DEC
+/// Deceleration duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_DEC_DEVICE_3 (16.02)
+
+/// Register : KVAL_RUN
+/// Run duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_RUN_DEVICE_3 (16.02)
+
+/// Register : KVAL_HOLD
+/// Hold duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_HOLD_DEVICE_3 (16.02)
+
+/// Register : CONFIG - field : EN_VSCOMP
+/// Motor Supply Voltage Compensation enabling , enum powerstep01_ConfigEnVscomp_t
+#define POWERSTEP01_CONF_PARAM_VS_COMP_DEVICE_3 (POWERSTEP01_CONFIG_VS_COMP_DISABLE)
+
+/// Register : MIN_SPEED - field : LSPD_OPT
+/// Low speed optimization bit, enum powerstep01_LspdOpt_t
+#define POWERSTEP01_CONF_PARAM_LSPD_BIT_DEVICE_3 (POWERSTEP01_LSPD_OPT_OFF)
+
+/// Register : K_THERM
+/// Thermal compensation param, range 1 to 1.46875
+#define POWERSTEP01_CONF_PARAM_K_THERM_DEVICE_3 (1)
+
+/// Register : INT_SPEED
+/// Intersect speed settings for BEMF compensation in steps/s, range 0 to 3906 steps/s
+#define POWERSTEP01_CONF_PARAM_INT_SPD_DEVICE_3 (61.512)
+
+/// Register : ST_SLP
+/// BEMF start slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_ST_SLP_DEVICE_3 (0.03815)
+
+/// Register : FN_SLP_ACC
+/// BEMF final acc slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_FN_SLP_ACC_DEVICE_3 (0.06256)
+
+/// Register : FN_SLP_DEC
+/// BEMF final dec slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_FN_SLP_DEC_DEVICE_3 (0.06256)
+
+/// Register : CONFIG - field : F_PWM_INT
+/// PWM Frequency Integer division, enum powerstep01_ConfigFPwmInt_t
+#define POWERSTEP01_CONF_PARAM_PWM_DIV_DEVICE_3 (POWERSTEP01_CONFIG_PWM_DIV_2)
+
+/// Register : CONFIG - field : F_PWM_DEC
+/// PWM Frequency Integer Multiplier, enum powerstep01_ConfigFPwmDec_t
+#define POWERSTEP01_CONF_PARAM_PWM_MUL_DEVICE_3 (POWERSTEP01_CONFIG_PWM_MUL_1)
+
+/******************** Advance current control parameters  *********************/
+
+/// Register : TVAL_ACC
+/// Acceleration torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_ACC_DEVICE_3  (328.12)
+
+/// Register : TVAL_DEC
+/// Deceleration torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_DEC_DEVICE_3  (328.12)
+
+/// Register : TVAL_RUN
+/// Running torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_RUN_DEVICE_3  (328.12)
+
+/// Register : TVAL_HOLD
+/// Holding torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_HOLD_DEVICE_3 (328.12)
+
+/// Register : CONFIG - field : EN_TQREG
+/// External torque regulation enabling , enum powerstep01_ConfigEnTqReg_t
+#define POWERSTEP01_CONF_PARAM_TQ_REG_DEVICE_3 (POWERSTEP01_CONFIG_TQ_REG_TVAL_USED)
+
+/// Register : CONFIG - field : PRED_EN
+/// Predictive current enabling , enum powerstep01_ConfigPredEn_t
+#define POWERSTEP01_CONF_PARAM_PRED_EN_DEVICE_3 (POWERSTEP01_CONFIG_PRED_DISABLE)
+
+///  Register : TON_MIN
+///  Minimum on-time in us, range 0.5us to 64us
+#define POWERSTEP01_CONF_PARAM_TON_MIN_DEVICE_3 (3.0)
+
+/// Register : TOFF_MIN
+///  Minimum off-time in us, range 0.5us to 64us
+#define POWERSTEP01_CONF_PARAM_TOFF_MIN_DEVICE_3 (21.0)
+
+/// Register : T_FAST - field: TOFF_FAST
+/// Maximum fast decay time , enum powerstep01_ToffFast_t
+#define POWERSTEP01_CONF_PARAM_TOFF_FAST_DEVICE_3  (POWERSTEP01_TOFF_FAST_8us)
+
+/// Register : T_FAST - field: FAST_STEP
+///  Maximum fall step time , enum powerstep01_FastStep_t
+#define POWERSTEP01_CONF_PARAM_FAST_STEP_DEVICE_3  (POWERSTEP01_FAST_STEP_12us)
+
+/// Register : CONFIG - field : TSW
+/// Switching period, enum powerstep01_ConfigTsw_t
+#define POWERSTEP01_CONF_PARAM_TSW_DEVICE_3 (POWERSTEP01_CONFIG_TSW_048us)
+
+/****************************** Gate Driving **********************************/
+
+/// Register : GATECFG1 - field : IGATE
+/// Gate sink/source current via enum powerstep01_Igate_t
+#define POWERSTEP01_CONF_PARAM_IGATE_DEVICE_3      (POWERSTEP01_IGATE_64mA)
+
+/// Register : CONFIG - field : VCCVAL
+/// VCC Val, enum powerstep01_ConfigVccVal_t
+#define POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_3 (POWERSTEP01_CONFIG_VCCVAL_15V)
+
+/// Register : CONFIG - field : UVLOVAL
+/// UVLO Threshold via powerstep01_ConfigUvLoVal_t
+#define POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_3    (POWERSTEP01_CONFIG_UVLOVAL_LOW)
+
+/// Register : GATECFG1 - field : TBOOST
+/// Duration of the overboost phase during gate turn-off via enum powerstep01_Tboost_t
+#define POWERSTEP01_CONF_PARAM_TBOOST_DEVICE_3     (POWERSTEP01_TBOOST_0ns)
+
+/// Register : GATECFG1 - field : TCC
+/// Controlled current time via enum powerstep01_Tcc_t
+#define POWERSTEP01_CONF_PARAM_TCC_DEVICE_3        (POWERSTEP01_TCC_500ns)
+
+/// Duration of the blanking time via enum powerstep01_TBlank_t
+#define POWERSTEP01_CONF_PARAM_TBLANK_DEVICE_3     (POWERSTEP01_TBLANK_375ns)
+
+/// Register : GATECFG2 - field : TDT
+/// Duration of the dead time via enum powerstep01_Tdt_t
+#define POWERSTEP01_CONF_PARAM_TDT_DEVICE_3        (POWERSTEP01_TDT_125ns)
+
+/******************************* Others *************************************/
+
+/// Register : OCD_TH
+/// Overcurrent threshold settings via enum powerstep01_OcdTh_t
+#define POWERSTEP01_CONF_PARAM_OCD_TH_DEVICE_3 (POWERSTEP01_OCD_TH_281_25mV)
+
+/// Register : CONFIG - field : OC_SD
+/// Over current shutwdown enabling, enum powerstep01_ConfigOcSd_t
+#define POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_3 (POWERSTEP01_CONFIG_OC_SD_DISABLE)
+
+/// Register : STALL_TH
+/// Stall threshold settings in mV, range 31.25mV to 1000mV
+#define POWERSTEP01_CONF_PARAM_STALL_TH_DEVICE_3 (531.25)
+
+/// Register : ALARM_EN
+/// Alarm settings via bitmap enum powerstep01_AlarmEn_t
+#define POWERSTEP01_CONF_PARAM_ALARM_EN_DEVICE_3 (POWERSTEP01_ALARM_EN_OVERCURRENT | \
+                                                  POWERSTEP01_ALARM_EN_THERMAL_SHUTDOWN |  \
+                                                  POWERSTEP01_ALARM_EN_THERMAL_WARNING |  \
+                                                  POWERSTEP01_ALARM_EN_UVLO |  \
+                                                  POWERSTEP01_ALARM_EN_STALL_DETECTION |  \
+                                                  POWERSTEP01_ALARM_EN_SW_TURN_ON | \
+                                                  POWERSTEP01_ALARM_EN_WRONG_NPERF_CMD)
+
+/// Register : CONFIG - field : SW_MODE
+/// External switch hard stop interrupt mode, enum powerstep01_ConfigSwMode_t
+#define POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_3 (POWERSTEP01_CONFIG_SW_HARD_STOP)
+
+/// Register : STEP_MODE - field : STEP_MODE
+/// Step mode settings via enum powerstep01_StepSel_t
+#define POWERSTEP01_CONF_PARAM_STEP_MODE_DEVICE_3 (STEP_MODE_1_16)
+
+/// Register : STEP_MODE - field : CM_VM
+/// Current mode or Voltage mode via enum powerstep01_CmVm_t
+#define POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_3 (POWERSTEP01_CM_VM_CURRENT)
+
+/// Register : STEP_MODE - Field : SYNC_MODE and SYNC_EN
+/// Synch. Mode settings via enum powerstep01_SyncSel_t
+#define POWERSTEP01_CONF_PARAM_SYNC_MODE_DEVICE_3 (POWERSTEP01_SYNC_SEL_DISABLED)
+
+/// Register : CONFIG - field : OSC_CLK_SEL
+/// Clock setting , enum powerstep01_ConfigOscMgmt_t
+#define POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_3 (POWERSTEP01_CONFIG_INT_16MHZ_OSCOUT_2MHZ)
+
+/// Register : GATECFG1 - field : WD_EN
+/// External clock watchdog, enum powerstep01_WdEn_t
+#define POWERSTEP01_CONF_PARAM_WD_EN_DEVICE_3 (POWERSTEP01_WD_EN_DISABLE)
+
+/****************************************************************************/
+/* Device 4                                                                 */
+/****************************************************************************/
+
+/**************************** Speed Profile *********************************/
+/// Register : ACC
+/// Acceleration rate in step/s2, range 14.55 to 59590 steps/s^2
+#define POWERSTEP01_CONF_PARAM_ACC_DEVICE_4 (2008.16)
+
+/// Register : DEC
+/// Deceleration rate in step/s2, range 14.55 to 59590 steps/s^2
+#define POWERSTEP01_CONF_PARAM_DEC_DEVICE_4 (2008.16)
+
+///Register : MAX_SPEED
+/// Maximum speed in step/s, range 15.25 to 15610 steps/s
+#define POWERSTEP01_CONF_PARAM_MAX_SPEED_DEVICE_4 (991.82)
+
+/// Register : MIN_SPEED
+/// Minimum speed in step/s, range 0 to 976.3 steps/s
+#define POWERSTEP01_CONF_PARAM_MIN_SPEED_DEVICE_4 (0)
+
+/// Register : FS_SPD
+/// Full step speed in step/s, range 7.63 to 15625 steps/s
+#define POWERSTEP01_CONF_PARAM_FS_SPD_DEVICE_4 (595.09)
+
+/// Register : FS_SPD - field : BOOST_MODE
+/// Boost of the amplitude square wave, enum powerstep01_BoostMode_t
+#define POWERSTEP01_CONF_PARAM_BOOST_MODE_DEVICE_4 (POWERSTEP01_BOOST_MODE_OFF)
+
+
+/************************ Voltage mode parameters  **************************/
+/// Register : KVAL_ACC
+/// Acceleration duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_ACC_DEVICE_4 (16.02)
+
+/// Register : KVAL_DEC
+/// Deceleration duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_DEC_DEVICE_4 (16.02)
+
+/// Register : KVAL_RUN
+/// Run duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_RUN_DEVICE_4 (16.02)
+
+/// Register : KVAL_HOLD
+/// Hold duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_HOLD_DEVICE_4 (16.02)
+
+/// Register : CONFIG - field : EN_VSCOMP
+/// Motor Supply Voltage Compensation enabling , enum powerstep01_ConfigEnVscomp_t
+#define POWERSTEP01_CONF_PARAM_VS_COMP_DEVICE_4 (POWERSTEP01_CONFIG_VS_COMP_DISABLE)
+
+/// Register : MIN_SPEED - field : LSPD_OPT
+/// Low speed optimization bit, enum powerstep01_LspdOpt_t
+#define POWERSTEP01_CONF_PARAM_LSPD_BIT_DEVICE_4 (POWERSTEP01_LSPD_OPT_OFF)
+
+/// Register : K_THERM
+/// Thermal compensation param, range 1 to 1.46875
+#define POWERSTEP01_CONF_PARAM_K_THERM_DEVICE_4 (1)
+
+/// Register : INT_SPEED
+/// Intersect speed settings for BEMF compensation in steps/s, range 0 to 3906 steps/s
+#define POWERSTEP01_CONF_PARAM_INT_SPD_DEVICE_4 (61.512)
+
+/// Register : ST_SLP
+/// BEMF start slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_ST_SLP_DEVICE_4 (0.03815)
+
+/// Register : FN_SLP_ACC
+/// BEMF final acc slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_FN_SLP_ACC_DEVICE_4 (0.06256)
+
+/// Register : FN_SLP_DEC
+/// BEMF final dec slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_FN_SLP_DEC_DEVICE_4 (0.06256)
+
+/// Register : CONFIG - field : F_PWM_INT
+/// PWM Frequency Integer division, enum powerstep01_ConfigFPwmInt_t
+#define POWERSTEP01_CONF_PARAM_PWM_DIV_DEVICE_4 (POWERSTEP01_CONFIG_PWM_DIV_2)
+
+/// Register : CONFIG - field : F_PWM_DEC
+/// PWM Frequency Integer Multiplier, enum powerstep01_ConfigFPwmDec_t
+#define POWERSTEP01_CONF_PARAM_PWM_MUL_DEVICE_4 (POWERSTEP01_CONFIG_PWM_MUL_1)
+
+/******************** Advance current control parameters  *********************/
+
+/// Register : TVAL_ACC
+/// Acceleration torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_ACC_DEVICE_4  (328.12)
+
+/// Register : TVAL_DEC
+/// Deceleration torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_DEC_DEVICE_4  (328.12)
+
+/// Register : TVAL_RUN
+/// Running torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_RUN_DEVICE_4  (328.12)
+
+/// Register : TVAL_HOLD
+/// Holding torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_HOLD_DEVICE_4 (328.12)
+
+/// Register : CONFIG - field : EN_TQREG
+/// External torque regulation enabling , enum powerstep01_ConfigEnTqReg_t
+#define POWERSTEP01_CONF_PARAM_TQ_REG_DEVICE_4 (POWERSTEP01_CONFIG_TQ_REG_TVAL_USED)
+
+/// Register : CONFIG - field : PRED_EN
+/// Predictive current enabling , enum powerstep01_ConfigPredEn_t
+#define POWERSTEP01_CONF_PARAM_PRED_EN_DEVICE_4 (POWERSTEP01_CONFIG_PRED_DISABLE)
+
+///  Register : TON_MIN
+///  Minimum on-time in us, range 0.5us to 64us
+#define POWERSTEP01_CONF_PARAM_TON_MIN_DEVICE_4 (3.0)
+
+/// Register : TOFF_MIN
+///  Minimum off-time in us, range 0.5us to 64us
+#define POWERSTEP01_CONF_PARAM_TOFF_MIN_DEVICE_4 (21.0)
+
+/// Register : T_FAST - field: TOFF_FAST
+/// Maximum fast decay time , enum powerstep01_ToffFast_t
+#define POWERSTEP01_CONF_PARAM_TOFF_FAST_DEVICE_4  (POWERSTEP01_TOFF_FAST_8us)
+
+/// Register : T_FAST - field: FAST_STEP
+///  Maximum fall step time , enum powerstep01_FastStep_t
+#define POWERSTEP01_CONF_PARAM_FAST_STEP_DEVICE_4  (POWERSTEP01_FAST_STEP_12us)
+
+/// Register : CONFIG - field : TSW
+/// Switching period, enum powerstep01_ConfigTsw_t
+#define POWERSTEP01_CONF_PARAM_TSW_DEVICE_4 (POWERSTEP01_CONFIG_TSW_048us)
+
+/****************************** Gate Driving **********************************/
+
+/// Register : GATECFG1 - field : IGATE
+/// Gate sink/source current via enum powerstep01_Igate_t
+#define POWERSTEP01_CONF_PARAM_IGATE_DEVICE_4      (POWERSTEP01_IGATE_64mA)
+
+/// Register : CONFIG - field : VCCVAL
+/// VCC Val, enum powerstep01_ConfigVccVal_t
+#define POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_4 (POWERSTEP01_CONFIG_VCCVAL_15V)
+
+/// Register : CONFIG - field : UVLOVAL
+/// UVLO Threshold via powerstep01_ConfigUvLoVal_t
+#define POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_4    (POWERSTEP01_CONFIG_UVLOVAL_LOW)
+
+/// Register : GATECFG1 - field : TBOOST
+/// Duration of the overboost phase during gate turn-off via enum powerstep01_Tboost_t
+#define POWERSTEP01_CONF_PARAM_TBOOST_DEVICE_4     (POWERSTEP01_TBOOST_0ns)
+
+/// Register : GATECFG1 - field : TCC
+/// Controlled current time via enum powerstep01_Tcc_t
+#define POWERSTEP01_CONF_PARAM_TCC_DEVICE_4        (POWERSTEP01_TCC_500ns)
+
+/// Duration of the blanking time via enum powerstep01_TBlank_t
+#define POWERSTEP01_CONF_PARAM_TBLANK_DEVICE_4     (POWERSTEP01_TBLANK_375ns)
+
+/// Register : GATECFG2 - field : TDT
+/// Duration of the dead time via enum powerstep01_Tdt_t
+#define POWERSTEP01_CONF_PARAM_TDT_DEVICE_4        (POWERSTEP01_TDT_125ns)
+
+/******************************* Others *************************************/
+
+/// Register : OCD_TH
+/// Overcurrent threshold settings via enum powerstep01_OcdTh_t
+#define POWERSTEP01_CONF_PARAM_OCD_TH_DEVICE_4 (POWERSTEP01_OCD_TH_281_25mV)
+
+/// Register : CONFIG - field : OC_SD
+/// Over current shutwdown enabling, enum powerstep01_ConfigOcSd_t
+#define POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_4 (POWERSTEP01_CONFIG_OC_SD_DISABLE)
+
+/// Register : STALL_TH
+/// Stall threshold settings in mV, range 31.25mV to 1000mV
+#define POWERSTEP01_CONF_PARAM_STALL_TH_DEVICE_4 (531.25)
+
+/// Register : ALARM_EN
+/// Alarm settings via bitmap enum powerstep01_AlarmEn_t
+#define POWERSTEP01_CONF_PARAM_ALARM_EN_DEVICE_4 (POWERSTEP01_ALARM_EN_OVERCURRENT | \
+                                                  POWERSTEP01_ALARM_EN_THERMAL_SHUTDOWN |  \
+                                                  POWERSTEP01_ALARM_EN_THERMAL_WARNING |  \
+                                                  POWERSTEP01_ALARM_EN_UVLO |  \
+                                                  POWERSTEP01_ALARM_EN_STALL_DETECTION |  \
+                                                  POWERSTEP01_ALARM_EN_SW_TURN_ON | \
+                                                  POWERSTEP01_ALARM_EN_WRONG_NPERF_CMD)
+
+/// Register : CONFIG - field : SW_MODE
+/// External switch hard stop interrupt mode, enum powerstep01_ConfigSwMode_t
+#define POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_4 (POWERSTEP01_CONFIG_SW_HARD_STOP)
+
+/// Register : STEP_MODE - field : STEP_MODE
+/// Step mode settings via enum powerstep01_StepSel_t
+#define POWERSTEP01_CONF_PARAM_STEP_MODE_DEVICE_4 (STEP_MODE_1_16)
+
+/// Register : STEP_MODE - field : CM_VM
+/// Current mode or Voltage mode via enum powerstep01_CmVm_t
+#define POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_4 (POWERSTEP01_CM_VM_CURRENT)
+
+/// Register : STEP_MODE - Field : SYNC_MODE and SYNC_EN
+/// Synch. Mode settings via enum powerstep01_SyncSel_t
+#define POWERSTEP01_CONF_PARAM_SYNC_MODE_DEVICE_4 (POWERSTEP01_SYNC_SEL_DISABLED)
+
+/// Register : CONFIG - field : OSC_CLK_SEL
+/// Clock setting , enum powerstep01_ConfigOscMgmt_t
+#define POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_4 (POWERSTEP01_CONFIG_INT_16MHZ_OSCOUT_2MHZ)
+
+/// Register : GATECFG1 - field : WD_EN
+/// External clock watchdog, enum powerstep01_WdEn_t
+#define POWERSTEP01_CONF_PARAM_WD_EN_DEVICE_4 (POWERSTEP01_WD_EN_DISABLE)
+
+/****************************************************************************/
+/* Device 5                                                                 */
+/****************************************************************************/
+
+/**************************** Speed Profile *********************************/
+/// Register : ACC
+/// Acceleration rate in step/s2, range 14.55 to 59590 steps/s^2
+#define POWERSTEP01_CONF_PARAM_ACC_DEVICE_5 (2008.16)
+
+/// Register : DEC
+/// Deceleration rate in step/s2, range 14.55 to 59590 steps/s^2
+#define POWERSTEP01_CONF_PARAM_DEC_DEVICE_5 (2008.16)
+
+///Register : MAX_SPEED
+/// Maximum speed in step/s, range 15.25 to 15610 steps/s
+#define POWERSTEP01_CONF_PARAM_MAX_SPEED_DEVICE_5 (991.82)
+
+/// Register : MIN_SPEED
+/// Minimum speed in step/s, range 0 to 976.3 steps/s
+#define POWERSTEP01_CONF_PARAM_MIN_SPEED_DEVICE_5 (0)
+
+/// Register : FS_SPD
+/// Full step speed in step/s, range 7.63 to 15625 steps/s
+#define POWERSTEP01_CONF_PARAM_FS_SPD_DEVICE_5 (595.09)
+
+/// Register : FS_SPD - field : BOOST_MODE
+/// Boost of the amplitude square wave, enum powerstep01_BoostMode_t
+#define POWERSTEP01_CONF_PARAM_BOOST_MODE_DEVICE_5 (POWERSTEP01_BOOST_MODE_OFF)
+
+
+/************************ Voltage mode parameters  **************************/
+/// Register : KVAL_ACC
+/// Acceleration duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_ACC_DEVICE_5 (16.02)
+
+/// Register : KVAL_DEC
+/// Deceleration duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_DEC_DEVICE_5 (16.02)
+
+/// Register : KVAL_RUN
+/// Run duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_RUN_DEVICE_5 (16.02)
+
+/// Register : KVAL_HOLD
+/// Hold duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_HOLD_DEVICE_5 (16.02)
+
+/// Register : CONFIG - field : EN_VSCOMP
+/// Motor Supply Voltage Compensation enabling , enum powerstep01_ConfigEnVscomp_t
+#define POWERSTEP01_CONF_PARAM_VS_COMP_DEVICE_5 (POWERSTEP01_CONFIG_VS_COMP_DISABLE)
+
+/// Register : MIN_SPEED - field : LSPD_OPT
+/// Low speed optimization bit, enum powerstep01_LspdOpt_t
+#define POWERSTEP01_CONF_PARAM_LSPD_BIT_DEVICE_5 (POWERSTEP01_LSPD_OPT_OFF)
+
+/// Register : K_THERM
+/// Thermal compensation param, range 1 to 1.46875
+#define POWERSTEP01_CONF_PARAM_K_THERM_DEVICE_5 (1)
+
+/// Register : INT_SPEED
+/// Intersect speed settings for BEMF compensation in steps/s, range 0 to 3906 steps/s
+#define POWERSTEP01_CONF_PARAM_INT_SPD_DEVICE_5 (61.512)
+
+/// Register : ST_SLP
+/// BEMF start slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_ST_SLP_DEVICE_5 (0.03815)
+
+/// Register : FN_SLP_ACC
+/// BEMF final acc slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_FN_SLP_ACC_DEVICE_5 (0.06256)
+
+/// Register : FN_SLP_DEC
+/// BEMF final dec slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_FN_SLP_DEC_DEVICE_5 (0.06256)
+
+/// Register : CONFIG - field : F_PWM_INT
+/// PWM Frequency Integer division, enum powerstep01_ConfigFPwmInt_t
+#define POWERSTEP01_CONF_PARAM_PWM_DIV_DEVICE_5 (POWERSTEP01_CONFIG_PWM_DIV_2)
+
+/// Register : CONFIG - field : F_PWM_DEC
+/// PWM Frequency Integer Multiplier, enum powerstep01_ConfigFPwmDec_t
+#define POWERSTEP01_CONF_PARAM_PWM_MUL_DEVICE_5 (POWERSTEP01_CONFIG_PWM_MUL_1)
+
+/******************** Advance current control parameters  *********************/
+
+/// Register : TVAL_ACC
+/// Acceleration torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_ACC_DEVICE_5  (328.12)
+
+/// Register : TVAL_DEC
+/// Deceleration torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_DEC_DEVICE_5  (328.12)
+
+/// Register : TVAL_RUN
+/// Running torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_RUN_DEVICE_5  (328.12)
+
+/// Register : TVAL_HOLD
+/// Holding torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_HOLD_DEVICE_5 (328.12)
+
+/// Register : CONFIG - field : EN_TQREG
+/// External torque regulation enabling , enum powerstep01_ConfigEnTqReg_t
+#define POWERSTEP01_CONF_PARAM_TQ_REG_DEVICE_5 (POWERSTEP01_CONFIG_TQ_REG_TVAL_USED)
+
+/// Register : CONFIG - field : PRED_EN
+/// Predictive current enabling , enum powerstep01_ConfigPredEn_t
+#define POWERSTEP01_CONF_PARAM_PRED_EN_DEVICE_5 (POWERSTEP01_CONFIG_PRED_DISABLE)
+
+///  Register : TON_MIN
+///  Minimum on-time in us, range 0.5us to 64us
+#define POWERSTEP01_CONF_PARAM_TON_MIN_DEVICE_5 (3.0)
+
+/// Register : TOFF_MIN
+///  Minimum off-time in us, range 0.5us to 64us
+#define POWERSTEP01_CONF_PARAM_TOFF_MIN_DEVICE_5 (21.0)
+
+/// Register : T_FAST - field: TOFF_FAST
+/// Maximum fast decay time , enum powerstep01_ToffFast_t
+#define POWERSTEP01_CONF_PARAM_TOFF_FAST_DEVICE_5  (POWERSTEP01_TOFF_FAST_8us)
+
+/// Register : T_FAST - field: FAST_STEP
+///  Maximum fall step time , enum powerstep01_FastStep_t
+#define POWERSTEP01_CONF_PARAM_FAST_STEP_DEVICE_5  (POWERSTEP01_FAST_STEP_12us)
+
+/// Register : CONFIG - field : TSW
+/// Switching period, enum powerstep01_ConfigTsw_t
+#define POWERSTEP01_CONF_PARAM_TSW_DEVICE_5 (POWERSTEP01_CONFIG_TSW_048us)
+
+/****************************** Gate Driving **********************************/
+
+/// Register : GATECFG1 - field : IGATE
+/// Gate sink/source current via enum powerstep01_Igate_t
+#define POWERSTEP01_CONF_PARAM_IGATE_DEVICE_5      (POWERSTEP01_IGATE_64mA)
+
+/// Register : CONFIG - field : VCCVAL
+/// VCC Val, enum powerstep01_ConfigVccVal_t
+#define POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_5 (POWERSTEP01_CONFIG_VCCVAL_15V)
+
+/// Register : CONFIG - field : UVLOVAL
+/// UVLO Threshold via powerstep01_ConfigUvLoVal_t
+#define POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_5    (POWERSTEP01_CONFIG_UVLOVAL_LOW)
+
+/// Register : GATECFG1 - field : TBOOST
+/// Duration of the overboost phase during gate turn-off via enum powerstep01_Tboost_t
+#define POWERSTEP01_CONF_PARAM_TBOOST_DEVICE_5     (POWERSTEP01_TBOOST_0ns)
+
+/// Register : GATECFG1 - field : TCC
+/// Controlled current time via enum powerstep01_Tcc_t
+#define POWERSTEP01_CONF_PARAM_TCC_DEVICE_5        (POWERSTEP01_TCC_500ns)
+
+/// Duration of the blanking time via enum powerstep01_TBlank_t
+#define POWERSTEP01_CONF_PARAM_TBLANK_DEVICE_5     (POWERSTEP01_TBLANK_375ns)
+
+/// Register : GATECFG2 - field : TDT
+/// Duration of the dead time via enum powerstep01_Tdt_t
+#define POWERSTEP01_CONF_PARAM_TDT_DEVICE_5        (POWERSTEP01_TDT_125ns)
+
+/******************************* Others *************************************/
+
+/// Register : OCD_TH
+/// Overcurrent threshold settings via enum powerstep01_OcdTh_t
+#define POWERSTEP01_CONF_PARAM_OCD_TH_DEVICE_5 (POWERSTEP01_OCD_TH_281_25mV)
+
+/// Register : CONFIG - field : OC_SD
+/// Over current shutwdown enabling, enum powerstep01_ConfigOcSd_t
+#define POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_5 (POWERSTEP01_CONFIG_OC_SD_DISABLE)
+
+/// Register : STALL_TH
+/// Stall threshold settings in mV, range 31.25mV to 1000mV
+#define POWERSTEP01_CONF_PARAM_STALL_TH_DEVICE_5 (531.25)
+
+/// Register : ALARM_EN
+/// Alarm settings via bitmap enum powerstep01_AlarmEn_t
+#define POWERSTEP01_CONF_PARAM_ALARM_EN_DEVICE_5 (POWERSTEP01_ALARM_EN_OVERCURRENT | \
+                                                  POWERSTEP01_ALARM_EN_THERMAL_SHUTDOWN |  \
+                                                  POWERSTEP01_ALARM_EN_THERMAL_WARNING |  \
+                                                  POWERSTEP01_ALARM_EN_UVLO |  \
+                                                  POWERSTEP01_ALARM_EN_STALL_DETECTION |  \
+                                                  POWERSTEP01_ALARM_EN_SW_TURN_ON | \
+                                                  POWERSTEP01_ALARM_EN_WRONG_NPERF_CMD)
+
+/// Register : CONFIG - field : SW_MODE
+/// External switch hard stop interrupt mode, enum powerstep01_ConfigSwMode_t
+#define POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_5 (POWERSTEP01_CONFIG_SW_HARD_STOP)
+
+/// Register : STEP_MODE - field : STEP_MODE
+/// Step mode settings via enum powerstep01_StepSel_t
+#define POWERSTEP01_CONF_PARAM_STEP_MODE_DEVICE_5 (STEP_MODE_1_16)
+
+/// Register : STEP_MODE - field : CM_VM
+/// Current mode or Voltage mode via enum powerstep01_CmVm_t
+#define POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_5 (POWERSTEP01_CM_VM_CURRENT)
+
+/// Register : STEP_MODE - Field : SYNC_MODE and SYNC_EN
+/// Synch. Mode settings via enum powerstep01_SyncSel_t
+#define POWERSTEP01_CONF_PARAM_SYNC_MODE_DEVICE_5 (POWERSTEP01_SYNC_SEL_DISABLED)
+
+/// Register : CONFIG - field : OSC_CLK_SEL
+/// Clock setting , enum powerstep01_ConfigOscMgmt_t
+#define POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_5 (POWERSTEP01_CONFIG_INT_16MHZ_OSCOUT_2MHZ)
+
+/// Register : GATECFG1 - field : WD_EN
+/// External clock watchdog, enum powerstep01_WdEn_t
+#define POWERSTEP01_CONF_PARAM_WD_EN_DEVICE_5 (POWERSTEP01_WD_EN_DISABLE)
+
+/****************************************************************************/
+/* Device 6                                                                 */
+/****************************************************************************/
+
+/**************************** Speed Profile *********************************/
+/// Register : ACC
+/// Acceleration rate in step/s2, range 14.55 to 59590 steps/s^2
+#define POWERSTEP01_CONF_PARAM_ACC_DEVICE_6 (2008.16)
+
+/// Register : DEC
+/// Deceleration rate in step/s2, range 14.55 to 59590 steps/s^2
+#define POWERSTEP01_CONF_PARAM_DEC_DEVICE_6 (2008.16)
+
+///Register : MAX_SPEED
+/// Maximum speed in step/s, range 15.25 to 15610 steps/s
+#define POWERSTEP01_CONF_PARAM_MAX_SPEED_DEVICE_6 (991.82)
+
+/// Register : MIN_SPEED
+/// Minimum speed in step/s, range 0 to 976.3 steps/s
+#define POWERSTEP01_CONF_PARAM_MIN_SPEED_DEVICE_6 (0)
+
+/// Register : FS_SPD
+/// Full step speed in step/s, range 7.63 to 15625 steps/s
+#define POWERSTEP01_CONF_PARAM_FS_SPD_DEVICE_6 (595.09)
+
+/// Register : FS_SPD - field : BOOST_MODE
+/// Boost of the amplitude square wave, enum powerstep01_BoostMode_t
+#define POWERSTEP01_CONF_PARAM_BOOST_MODE_DEVICE_6 (POWERSTEP01_BOOST_MODE_OFF)
+
+
+/************************ Voltage mode parameters  **************************/
+/// Register : KVAL_ACC
+/// Acceleration duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_ACC_DEVICE_6 (16.02)
+
+/// Register : KVAL_DEC
+/// Deceleration duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_DEC_DEVICE_6 (16.02)
+
+/// Register : KVAL_RUN
+/// Run duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_RUN_DEVICE_6 (16.02)
+
+/// Register : KVAL_HOLD
+/// Hold duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_HOLD_DEVICE_6 (16.02)
+
+/// Register : CONFIG - field : EN_VSCOMP
+/// Motor Supply Voltage Compensation enabling , enum powerstep01_ConfigEnVscomp_t
+#define POWERSTEP01_CONF_PARAM_VS_COMP_DEVICE_6 (POWERSTEP01_CONFIG_VS_COMP_DISABLE)
+
+/// Register : MIN_SPEED - field : LSPD_OPT
+/// Low speed optimization bit, enum powerstep01_LspdOpt_t
+#define POWERSTEP01_CONF_PARAM_LSPD_BIT_DEVICE_6 (POWERSTEP01_LSPD_OPT_OFF)
+
+/// Register : K_THERM
+/// Thermal compensation param, range 1 to 1.46875
+#define POWERSTEP01_CONF_PARAM_K_THERM_DEVICE_6 (1)
+
+/// Register : INT_SPEED
+/// Intersect speed settings for BEMF compensation in steps/s, range 0 to 3906 steps/s
+#define POWERSTEP01_CONF_PARAM_INT_SPD_DEVICE_6 (61.512)
+
+/// Register : ST_SLP
+/// BEMF start slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_ST_SLP_DEVICE_6 (0.03815)
+
+/// Register : FN_SLP_ACC
+/// BEMF final acc slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_FN_SLP_ACC_DEVICE_6 (0.06256)
+
+/// Register : FN_SLP_DEC
+/// BEMF final dec slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_FN_SLP_DEC_DEVICE_6 (0.06256)
+
+/// Register : CONFIG - field : F_PWM_INT
+/// PWM Frequency Integer division, enum powerstep01_ConfigFPwmInt_t
+#define POWERSTEP01_CONF_PARAM_PWM_DIV_DEVICE_6 (POWERSTEP01_CONFIG_PWM_DIV_2)
+
+/// Register : CONFIG - field : F_PWM_DEC
+/// PWM Frequency Integer Multiplier, enum powerstep01_ConfigFPwmDec_t
+#define POWERSTEP01_CONF_PARAM_PWM_MUL_DEVICE_6 (POWERSTEP01_CONFIG_PWM_MUL_1)
+
+/******************** Advance current control parameters  *********************/
+
+/// Register : TVAL_ACC
+/// Acceleration torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_ACC_DEVICE_6  (328.12)
+
+/// Register : TVAL_DEC
+/// Deceleration torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_DEC_DEVICE_6  (328.12)
+
+/// Register : TVAL_RUN
+/// Running torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_RUN_DEVICE_6  (328.12)
+
+/// Register : TVAL_HOLD
+/// Holding torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_HOLD_DEVICE_6 (328.12)
+
+/// Register : CONFIG - field : EN_TQREG
+/// External torque regulation enabling , enum powerstep01_ConfigEnTqReg_t
+#define POWERSTEP01_CONF_PARAM_TQ_REG_DEVICE_6 (POWERSTEP01_CONFIG_TQ_REG_TVAL_USED)
+
+/// Register : CONFIG - field : PRED_EN
+/// Predictive current enabling , enum powerstep01_ConfigPredEn_t
+#define POWERSTEP01_CONF_PARAM_PRED_EN_DEVICE_6 (POWERSTEP01_CONFIG_PRED_DISABLE)
+
+///  Register : TON_MIN
+///  Minimum on-time in us, range 0.5us to 64us
+#define POWERSTEP01_CONF_PARAM_TON_MIN_DEVICE_6 (3.0)
+
+/// Register : TOFF_MIN
+///  Minimum off-time in us, range 0.5us to 64us
+#define POWERSTEP01_CONF_PARAM_TOFF_MIN_DEVICE_6 (21.0)
+
+/// Register : T_FAST - field: TOFF_FAST
+/// Maximum fast decay time , enum powerstep01_ToffFast_t
+#define POWERSTEP01_CONF_PARAM_TOFF_FAST_DEVICE_6  (POWERSTEP01_TOFF_FAST_8us)
+
+/// Register : T_FAST - field: FAST_STEP
+///  Maximum fall step time , enum powerstep01_FastStep_t
+#define POWERSTEP01_CONF_PARAM_FAST_STEP_DEVICE_6  (POWERSTEP01_FAST_STEP_12us)
+
+/// Register : CONFIG - field : TSW
+/// Switching period, enum powerstep01_ConfigTsw_t
+#define POWERSTEP01_CONF_PARAM_TSW_DEVICE_6 (POWERSTEP01_CONFIG_TSW_048us)
+
+/****************************** Gate Driving **********************************/
+
+/// Register : GATECFG1 - field : IGATE
+/// Gate sink/source current via enum powerstep01_Igate_t
+#define POWERSTEP01_CONF_PARAM_IGATE_DEVICE_6      (POWERSTEP01_IGATE_64mA)
+
+/// Register : CONFIG - field : VCCVAL
+/// VCC Val, enum powerstep01_ConfigVccVal_t
+#define POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_6 (POWERSTEP01_CONFIG_VCCVAL_15V)
+
+/// Register : CONFIG - field : UVLOVAL
+/// UVLO Threshold via powerstep01_ConfigUvLoVal_t
+#define POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_6    (POWERSTEP01_CONFIG_UVLOVAL_LOW)
+
+/// Register : GATECFG1 - field : TBOOST
+/// Duration of the overboost phase during gate turn-off via enum powerstep01_Tboost_t
+#define POWERSTEP01_CONF_PARAM_TBOOST_DEVICE_6     (POWERSTEP01_TBOOST_0ns)
+
+/// Register : GATECFG1 - field : TCC
+/// Controlled current time via enum powerstep01_Tcc_t
+#define POWERSTEP01_CONF_PARAM_TCC_DEVICE_6        (POWERSTEP01_TCC_500ns)
+
+/// Duration of the blanking time via enum powerstep01_TBlank_t
+#define POWERSTEP01_CONF_PARAM_TBLANK_DEVICE_6     (POWERSTEP01_TBLANK_375ns)
+
+/// Register : GATECFG2 - field : TDT
+/// Duration of the dead time via enum powerstep01_Tdt_t
+#define POWERSTEP01_CONF_PARAM_TDT_DEVICE_6        (POWERSTEP01_TDT_125ns)
+
+/******************************* Others *************************************/
+
+/// Register : OCD_TH
+/// Overcurrent threshold settings via enum powerstep01_OcdTh_t
+#define POWERSTEP01_CONF_PARAM_OCD_TH_DEVICE_6 (POWERSTEP01_OCD_TH_281_25mV)
+
+/// Register : CONFIG - field : OC_SD
+/// Over current shutwdown enabling, enum powerstep01_ConfigOcSd_t
+#define POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_6 (POWERSTEP01_CONFIG_OC_SD_DISABLE)
+
+/// Register : STALL_TH
+/// Stall threshold settings in mV, range 31.25mV to 1000mV
+#define POWERSTEP01_CONF_PARAM_STALL_TH_DEVICE_6 (531.25)
+
+/// Register : ALARM_EN
+/// Alarm settings via bitmap enum powerstep01_AlarmEn_t
+#define POWERSTEP01_CONF_PARAM_ALARM_EN_DEVICE_6 (POWERSTEP01_ALARM_EN_OVERCURRENT | \
+                                                  POWERSTEP01_ALARM_EN_THERMAL_SHUTDOWN |  \
+                                                  POWERSTEP01_ALARM_EN_THERMAL_WARNING |  \
+                                                  POWERSTEP01_ALARM_EN_UVLO |  \
+                                                  POWERSTEP01_ALARM_EN_STALL_DETECTION |  \
+                                                  POWERSTEP01_ALARM_EN_SW_TURN_ON | \
+                                                  POWERSTEP01_ALARM_EN_WRONG_NPERF_CMD)
+
+/// Register : CONFIG - field : SW_MODE
+/// External switch hard stop interrupt mode, enum powerstep01_ConfigSwMode_t
+#define POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_6 (POWERSTEP01_CONFIG_SW_HARD_STOP)
+
+/// Register : STEP_MODE - field : STEP_MODE
+/// Step mode settings via enum powerstep01_StepSel_t
+#define POWERSTEP01_CONF_PARAM_STEP_MODE_DEVICE_6 (STEP_MODE_1_16)
+
+/// Register : STEP_MODE - field : CM_VM
+/// Current mode or Voltage mode via enum powerstep01_CmVm_t
+#define POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_6 (POWERSTEP01_CM_VM_CURRENT)
+
+/// Register : STEP_MODE - Field : SYNC_MODE and SYNC_EN
+/// Synch. Mode settings via enum powerstep01_SyncSel_t
+#define POWERSTEP01_CONF_PARAM_SYNC_MODE_DEVICE_6 (POWERSTEP01_SYNC_SEL_DISABLED)
+
+/// Register : CONFIG - field : OSC_CLK_SEL
+/// Clock setting , enum powerstep01_ConfigOscMgmt_t
+#define POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_6 (POWERSTEP01_CONFIG_INT_16MHZ_OSCOUT_2MHZ)
+
+/// Register : GATECFG1 - field : WD_EN
+/// External clock watchdog, enum powerstep01_WdEn_t
+#define POWERSTEP01_CONF_PARAM_WD_EN_DEVICE_6 (POWERSTEP01_WD_EN_DISABLE)
+
+/****************************************************************************/
+/* Device 7                                                                 */
+/****************************************************************************/
+
+/**************************** Speed Profile *********************************/
+/// Register : ACC
+/// Acceleration rate in step/s2, range 14.55 to 59590 steps/s^2
+#define POWERSTEP01_CONF_PARAM_ACC_DEVICE_7 (2008.16)
+
+/// Register : DEC
+/// Deceleration rate in step/s2, range 14.55 to 59590 steps/s^2
+#define POWERSTEP01_CONF_PARAM_DEC_DEVICE_7 (2008.16)
+
+///Register : MAX_SPEED
+/// Maximum speed in step/s, range 15.25 to 15610 steps/s
+#define POWERSTEP01_CONF_PARAM_MAX_SPEED_DEVICE_7 (991.82)
+
+/// Register : MIN_SPEED
+/// Minimum speed in step/s, range 0 to 976.3 steps/s
+#define POWERSTEP01_CONF_PARAM_MIN_SPEED_DEVICE_7 (0)
+
+/// Register : FS_SPD
+/// Full step speed in step/s, range 7.63 to 15625 steps/s
+#define POWERSTEP01_CONF_PARAM_FS_SPD_DEVICE_7 (595.09)
+
+/// Register : FS_SPD - field : BOOST_MODE
+/// Boost of the amplitude square wave, enum powerstep01_BoostMode_t
+#define POWERSTEP01_CONF_PARAM_BOOST_MODE_DEVICE_7 (POWERSTEP01_BOOST_MODE_OFF)
+
+
+/************************ Voltage mode parameters  **************************/
+/// Register : KVAL_ACC
+/// Acceleration duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_ACC_DEVICE_7 (16.02)
+
+/// Register : KVAL_DEC
+/// Deceleration duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_DEC_DEVICE_7 (16.02)
+
+/// Register : KVAL_RUN
+/// Run duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_RUN_DEVICE_7 (16.02)
+
+/// Register : KVAL_HOLD
+/// Hold duty cycle (torque) in %, range 0 to 99.6%
+#define POWERSTEP01_CONF_PARAM_KVAL_HOLD_DEVICE_7 (16.02)
+
+/// Register : CONFIG - field : EN_VSCOMP
+/// Motor Supply Voltage Compensation enabling , enum powerstep01_ConfigEnVscomp_t
+#define POWERSTEP01_CONF_PARAM_VS_COMP_DEVICE_7 (POWERSTEP01_CONFIG_VS_COMP_DISABLE)
+
+/// Register : MIN_SPEED - field : LSPD_OPT
+/// Low speed optimization bit, enum powerstep01_LspdOpt_t
+#define POWERSTEP01_CONF_PARAM_LSPD_BIT_DEVICE_7 (POWERSTEP01_LSPD_OPT_OFF)
+
+/// Register : K_THERM
+/// Thermal compensation param, range 1 to 1.46875
+#define POWERSTEP01_CONF_PARAM_K_THERM_DEVICE_7 (1)
+
+/// Register : INT_SPEED
+/// Intersect speed settings for BEMF compensation in steps/s, range 0 to 3906 steps/s
+#define POWERSTEP01_CONF_PARAM_INT_SPD_DEVICE_7 (61.512)
+
+/// Register : ST_SLP
+/// BEMF start slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_ST_SLP_DEVICE_7 (0.03815)
+
+/// Register : FN_SLP_ACC
+/// BEMF final acc slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_FN_SLP_ACC_DEVICE_7 (0.06256)
+
+/// Register : FN_SLP_DEC
+/// BEMF final dec slope settings for BEMF compensation in % step/s, range 0 to 0.4% s/step
+#define POWERSTEP01_CONF_PARAM_FN_SLP_DEC_DEVICE_7 (0.06256)
+
+/// Register : CONFIG - field : F_PWM_INT
+/// PWM Frequency Integer division, enum powerstep01_ConfigFPwmInt_t
+#define POWERSTEP01_CONF_PARAM_PWM_DIV_DEVICE_7 (POWERSTEP01_CONFIG_PWM_DIV_2)
+
+/// Register : CONFIG - field : F_PWM_DEC
+/// PWM Frequency Integer Multiplier, enum powerstep01_ConfigFPwmDec_t
+#define POWERSTEP01_CONF_PARAM_PWM_MUL_DEVICE_7 (POWERSTEP01_CONFIG_PWM_MUL_1)
+
+/******************** Advance current control parameters  *********************/
+
+/// Register : TVAL_ACC
+/// Acceleration torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_ACC_DEVICE_7  (328.12)
+
+/// Register : TVAL_DEC
+/// Deceleration torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_DEC_DEVICE_7  (328.12)
+
+/// Register : TVAL_RUN
+/// Running torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_RUN_DEVICE_7  (328.12)
+
+/// Register : TVAL_HOLD
+/// Holding torque in mV, range from 7.8mV to 1000 mV
+#define POWERSTEP01_CONF_PARAM_TVAL_HOLD_DEVICE_7 (328.12)
+
+/// Register : CONFIG - field : EN_TQREG
+/// External torque regulation enabling , enum powerstep01_ConfigEnTqReg_t
+#define POWERSTEP01_CONF_PARAM_TQ_REG_DEVICE_7 (POWERSTEP01_CONFIG_TQ_REG_TVAL_USED)
+
+/// Register : CONFIG - field : PRED_EN
+/// Predictive current enabling , enum powerstep01_ConfigPredEn_t
+#define POWERSTEP01_CONF_PARAM_PRED_EN_DEVICE_7 (POWERSTEP01_CONFIG_PRED_DISABLE)
+
+///  Register : TON_MIN
+///  Minimum on-time in us, range 0.5us to 64us
+#define POWERSTEP01_CONF_PARAM_TON_MIN_DEVICE_7 (3.0)
+
+/// Register : TOFF_MIN
+///  Minimum off-time in us, range 0.5us to 64us
+#define POWERSTEP01_CONF_PARAM_TOFF_MIN_DEVICE_7 (21.0)
+
+/// Register : T_FAST - field: TOFF_FAST
+/// Maximum fast decay time , enum powerstep01_ToffFast_t
+#define POWERSTEP01_CONF_PARAM_TOFF_FAST_DEVICE_7  (POWERSTEP01_TOFF_FAST_8us)
+
+/// Register : T_FAST - field: FAST_STEP
+///  Maximum fall step time , enum powerstep01_FastStep_t
+#define POWERSTEP01_CONF_PARAM_FAST_STEP_DEVICE_7  (POWERSTEP01_FAST_STEP_12us)
+
+/// Register : CONFIG - field : TSW
+/// Switching period, enum powerstep01_ConfigTsw_t
+#define POWERSTEP01_CONF_PARAM_TSW_DEVICE_7 (POWERSTEP01_CONFIG_TSW_048us)
+
+/****************************** Gate Driving **********************************/
+
+/// Register : GATECFG1 - field : IGATE
+/// Gate sink/source current via enum powerstep01_Igate_t
+#define POWERSTEP01_CONF_PARAM_IGATE_DEVICE_7      (POWERSTEP01_IGATE_64mA)
+
+/// Register : CONFIG - field : VCCVAL
+/// VCC Val, enum powerstep01_ConfigVccVal_t
+#define POWERSTEP01_CONF_PARAM_VCCVAL_DEVICE_7 (POWERSTEP01_CONFIG_VCCVAL_15V)
+
+/// Register : CONFIG - field : UVLOVAL
+/// UVLO Threshold via powerstep01_ConfigUvLoVal_t
+#define POWERSTEP01_CONF_PARAM_UVLOVAL_DEVICE_7    (POWERSTEP01_CONFIG_UVLOVAL_LOW)
+
+/// Register : GATECFG1 - field : TBOOST
+/// Duration of the overboost phase during gate turn-off via enum powerstep01_Tboost_t
+#define POWERSTEP01_CONF_PARAM_TBOOST_DEVICE_7     (POWERSTEP01_TBOOST_0ns)
+
+/// Register : GATECFG1 - field : TCC
+/// Controlled current time via enum powerstep01_Tcc_t
+#define POWERSTEP01_CONF_PARAM_TCC_DEVICE_7        (POWERSTEP01_TCC_500ns)
+
+/// Duration of the blanking time via enum powerstep01_TBlank_t
+#define POWERSTEP01_CONF_PARAM_TBLANK_DEVICE_7     (POWERSTEP01_TBLANK_375ns)
+
+/// Register : GATECFG2 - field : TDT
+/// Duration of the dead time via enum powerstep01_Tdt_t
+#define POWERSTEP01_CONF_PARAM_TDT_DEVICE_7        (POWERSTEP01_TDT_125ns)
+
+/******************************* Others *************************************/
+
+/// Register : OCD_TH
+/// Overcurrent threshold settings via enum powerstep01_OcdTh_t
+#define POWERSTEP01_CONF_PARAM_OCD_TH_DEVICE_7 (POWERSTEP01_OCD_TH_281_25mV)
+
+/// Register : CONFIG - field : OC_SD
+/// Over current shutwdown enabling, enum powerstep01_ConfigOcSd_t
+#define POWERSTEP01_CONF_PARAM_OC_SD_DEVICE_7 (POWERSTEP01_CONFIG_OC_SD_DISABLE)
+
+/// Register : STALL_TH
+/// Stall threshold settings in mV, range 31.25mV to 1000mV
+#define POWERSTEP01_CONF_PARAM_STALL_TH_DEVICE_7 (531.25)
+
+/// Register : ALARM_EN
+/// Alarm settings via bitmap enum powerstep01_AlarmEn_t
+#define POWERSTEP01_CONF_PARAM_ALARM_EN_DEVICE_7 (POWERSTEP01_ALARM_EN_OVERCURRENT | \
+                                                  POWERSTEP01_ALARM_EN_THERMAL_SHUTDOWN |  \
+                                                  POWERSTEP01_ALARM_EN_THERMAL_WARNING |  \
+                                                  POWERSTEP01_ALARM_EN_UVLO |  \
+                                                  POWERSTEP01_ALARM_EN_STALL_DETECTION |  \
+                                                  POWERSTEP01_ALARM_EN_SW_TURN_ON | \
+                                                  POWERSTEP01_ALARM_EN_WRONG_NPERF_CMD)
+
+/// Register : CONFIG - field : SW_MODE
+/// External switch hard stop interrupt mode, enum powerstep01_ConfigSwMode_t
+#define POWERSTEP01_CONF_PARAM_SW_MODE_DEVICE_7 (POWERSTEP01_CONFIG_SW_HARD_STOP)
+
+/// Register : STEP_MODE - field : STEP_MODE
+/// Step mode settings via enum powerstep01_StepSel_t
+#define POWERSTEP01_CONF_PARAM_STEP_MODE_DEVICE_7 (STEP_MODE_1_16)
+
+/// Register : STEP_MODE - field : CM_VM
+/// Current mode or Voltage mode via enum powerstep01_CmVm_t
+#define POWERSTEP01_CONF_PARAM_CM_VM_DEVICE_7 (POWERSTEP01_CM_VM_CURRENT)
+
+/// Register : STEP_MODE - Field : SYNC_MODE and SYNC_EN
+/// Synch. Mode settings via enum powerstep01_SyncSel_t
+#define POWERSTEP01_CONF_PARAM_SYNC_MODE_DEVICE_7 (POWERSTEP01_SYNC_SEL_DISABLED)
+
+/// Register : CONFIG - field : OSC_CLK_SEL
+/// Clock setting , enum powerstep01_ConfigOscMgmt_t
+#define POWERSTEP01_CONF_PARAM_CLOCK_SETTING_DEVICE_7 (POWERSTEP01_CONFIG_INT_16MHZ_OSCOUT_2MHZ)
+
+/// Register : GATECFG1 - field : WD_EN
+/// External clock watchdog, enum powerstep01_WdEn_t
+#define POWERSTEP01_CONF_PARAM_WD_EN_DEVICE_7 (POWERSTEP01_WD_EN_DISABLE)
+
+#endif /* __POWERSTEP01_TARGET_CONFIG_H */

@@ -28,10 +28,6 @@ void setup()
   /* Attach the function MyFlagInterruptHandler (defined below) to the flag interrupt */
   PS01.AttachFlagInterrupt(MyFlagInterruptHandler);
 
-//----- Move of 16000 steps in the FW direction
-
-  /* Move shield 0 of 16000 steps in the FORWARD direction*/
-  PS01.Move(0, FORWARD, 16000);
   
   /* Wait for the motor of shield 0 ends moving */
   PS01.WaitWhileActive(0);
@@ -41,14 +37,13 @@ void setup()
 
 //----- Move of 16000 steps in the BW direction
 
-  /* Move shield 0 of 16000 steps in the BACKWARD direction*/
-  PS01.Move(0, BACKWARD, 16000);
+
 
   /* Wait for the motor of shield 0 ends moving */
   PS01.WaitWhileActive(0);
 
    /* Set the current position of shield 0 to be the Home position */
-  PS01.SetHome(0);
+  PS01.CmdSetHome(0);
   
   /* Wait for 2 seconds */
   delay(2000);
@@ -56,7 +51,7 @@ void setup()
 //----- Go to position -6400
 
   /* Request shield 0 to go to position -6400 */
-  PS01.GoTo(0,-6400);  
+  PS01.CmdGoTo(0,-6400);
   
   /* Wait for the motor ends moving */
   PS01.WaitWhileActive(0);
@@ -65,7 +60,7 @@ void setup()
   pos = PS01.GetPosition(0);
 
    /* Set the current position of shield 0 to be the Mark position */
-  PS01.SetMark(0);
+  PS01.CmdSetMark(0);
 
 /* Wait for 2 seconds */
   delay(2000);
@@ -73,7 +68,7 @@ void setup()
 //----- Go Home
 
   /* Request shield 0 to go to Home */
-  PS01.GoHome(0);  
+  PS01.CmdGoHome(0);
   PS01.WaitWhileActive(0);
 
   /* Get current position of shield 0 */
@@ -85,7 +80,7 @@ void setup()
 //----- Go to position 6400
 
   /* Request shield 0 to go to position 6400 */
-  PS01.GoTo(0,6400);  
+  PS01.CmdGoTo(0,6400);
   
   /* Wait for the motor of shield 0 ends moving */
   PS01.WaitWhileActive(0);
@@ -99,7 +94,7 @@ void setup()
 //----- Go Mark which was set previously after go to -6400
 
   /* Request shield 0 to go to Mark position */
-  PS01.GoMark(0);  
+  PS01.CmdGoMark(0);
   
   /* Wait for the motor of shield 0 ends moving */
   PS01.WaitWhileActive(0);
@@ -110,63 +105,10 @@ void setup()
   /* Wait for 2 seconds */
   delay(2000);
 
-//----- Run the motor BACKWARD
-
-  /* Request shield 0 to run BACKWARD */
-   PS01.Run(0,BACKWARD);       
-   delay(5000);
-
-   /* Get current speed of shield 0 */
-   mySpeed = PS01.GetCurrentSpeed(0);
-
-//----- Increase the speed while running
-
-  /* Increase speed of shield 0 to 2400 step/s */
-  PS01.SetMaxSpeed(0,2400);
-  delay(5000);
-
-   /* Get current speed of shield 0 */
-   mySpeed = PS01.GetCurrentSpeed(0);
-
-//----- Decrease the speed while running
-
-  /* Decrease speed of shield 0 to 1200 step/s */
-  PS01.SetMaxSpeed(0,1200);
-  delay(5000);
-
-  /* Get current speed */
-  mySpeed = PS01.GetCurrentSpeed(0);
-
-//----- Increase acceleration while running
-
-  /* Increase acceleration of shield 0 to 480 step/s^2 */
-  PS01.SetAcceleration(0,480);
-  delay(5000);
-
-  /* Increase speed of shield 0 to 2400 step/s */
- PS01.SetMaxSpeed(0,2400);
- delay(5000);
-
- /* Get current speed of shield 0 */
- mySpeed = PS01.GetCurrentSpeed(0);
-
-//----- Increase deceleration while running
-
-  /* Increase deceleration of shield 0 to 480 step/s^2 */
-  PS01.SetDeceleration(0,480);
-  delay(5000);
-
-  /* Decrease speed of shield 0 to 1200 step/s */
-  PS01.SetMaxSpeed(0,1200);
-  delay(5000);
-
-  /* Get current speed */
-  mySpeed = PS01.GetCurrentSpeed(0);
-
 //----- Soft stopped required while running
 
   /* Request soft stop of shield 0 */
-  PS01.SoftStop(0);
+  PS01.CmdSoftStop(0);
 
   /* Wait for the motor of shield 0 ends moving */  
   PS01.WaitWhileActive(0);
@@ -176,12 +118,9 @@ void setup()
 
 //----- Run stopped by hardstop
 
-  /* Request shield 0 to run in FORWARD direction */
-  PS01.Run(0,FORWARD);       
-  delay(5000);
   
   /* Request shield 0 to immediatly stop */
-  PS01.HardStop(0);
+  PS01.CmdHardStop(0);
   PS01.WaitWhileActive(0);
 
   /* Wait for 2 seconds */
@@ -190,11 +129,11 @@ void setup()
 //----- GOTO stopped by softstop
 
  /* Request shield 0 to go to position 20000  */
-  PS01.GoTo(0,20000);  
+  PS01.CmdGoTo(0,20000);
   delay(5000);
 
   /* Request shield 0 to perform a soft stop */
-  PS01.SoftStop(0);
+  PS01.CmdSoftStop(0);
   PS01.WaitWhileActive(0);
 
   /* Wait for 2 seconds */
@@ -211,16 +150,11 @@ void setup()
 //----- Change step mode to full step mode
 
   /* Select full step mode for shield 0 */
-  PS01.SelectStepMode(0,POWERSTEP01_STEP_SEL_1);
+  PS01.SelectStepMode(0,STEP_MODE_FULL);
 
-  /* Set speed and acceleration to be consistent with full step mode */
-  PS01.SetMaxSpeed(0,100);
-  PS01.SetMinSpeed(0,50);
-  PS01.SetAcceleration(0,10);
-  PS01.SetDeceleration(0,10);
 
   /* Request shield 0 to go position 200 */
-  PS01.GoTo(0,200);  
+  PS01.CmdGoTo(0,200);
 
   /* Wait for the motor of shield 0 ends moving */
   PS01.WaitWhileActive(0);
@@ -234,26 +168,21 @@ void setup()
 //----- Restore 1/16 microstepping mode
 
   /* Reset shield 0 to 1/16 microstepping mode */
-  PS01.SelectStepMode(0,POWERSTEP01_STEP_SEL_1_16);
+  PS01.SelectStepMode(0,STEP_MODE_1_16);
 
-  /* Update speed, acceleration, deceleration for 1/16 microstepping mode*/
-  PS01.SetMaxSpeed(0,1600);
-  PS01.SetMinSpeed(0,800);
-  PS01.SetAcceleration(0,160);
-  PS01.SetDeceleration(0,160);
 
 }
 
 void loop()
 {
   /* Request shield 0 to go position -6400 */
-  PS01.GoTo(0,-6400);
+  PS01.CmdGoTo(0,-6400);
 
   /* Wait for the motor of shield 0 ends moving */
   PS01.WaitWhileActive(0);
 
   /* Request shield 0 to go position 6400 */
-  PS01.GoTo(0,6400);
+  PS01.CmdGoTo(0,6400);
 
   /* Wait for the motor of shield 0 ends moving */
   PS01.WaitWhileActive(0);  
