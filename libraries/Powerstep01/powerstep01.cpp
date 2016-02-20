@@ -1,8 +1,8 @@
 /******************************************************//**
- * @file    l6474.cpp 
+ * @file    Powerstep01.cpp
  * @version V1.0
  * @date    March 3, 2014
- * @brief   L6474 library for arduino 
+ * @brief   Powerstep01 library for arduino
  *
  * This file is free software; you can redistribute it and/or modify
  * it under the terms of either the GNU General Public License version 2
@@ -10,31 +10,30 @@
  * published by the Free Software Foundation.
  **********************************************************/ 
 
-#include "../Powerstep01/l6474.h"
-
+#include <powerstep01.h>
 #include <SPI.h>
 
-#ifdef _DEBUG_L6474
+#ifdef _DEBUG_POWERSTEP01
 /// Log buffer
-char l6474StrOut[DEBUG_BUFFER_SIZE];
+char Powerstep01StrOut[DEBUG_BUFFER_SIZE];
 #endif
 
-const uint16_t L6474::prescalerArrayTimer0_1[PRESCALER_ARRAY_TIMER0_1_SIZE] = { 0, 1, 8, 64, 256, 1024};
-const uint16_t L6474::prescalerArrayTimer2[PRESCALER_ARRAY_TIMER2_SIZE] = {0, 1, 8, 32, 64, 128, 256, 1024};
-volatile void (*L6474::flagInterruptCallback)(void);
-volatile uint8_t L6474::numberOfShields;
-uint8_t L6474::spiTxBursts[L6474_CMD_ARG_MAX_NB_BYTES][MAX_NUMBER_OF_SHIELDS];
-uint8_t L6474::spiRxBursts[L6474_CMD_ARG_MAX_NB_BYTES][MAX_NUMBER_OF_SHIELDS];
-volatile bool L6474::spiPreemtionByIsr = false;
-volatile bool L6474::isrFlag = false;
-volatile class L6474* L6474::instancePtr = NULL;
+const uint16_t Powerstep01::prescalerArrayTimer0_1[PRESCALER_ARRAY_TIMER0_1_SIZE] = { 0, 1, 8, 64, 256, 1024};
+const uint16_t Powerstep01::prescalerArrayTimer2[PRESCALER_ARRAY_TIMER2_SIZE] = {0, 1, 8, 32, 64, 128, 256, 1024};
+volatile void (*Powerstep01::flagInterruptCallback)(void);
+volatile uint8_t Powerstep01::numberOfShields;
+uint8_t Powerstep01::spiTxBursts[Powerstep01_CMD_ARG_MAX_NB_BYTES][MAX_NUMBER_OF_SHIELDS];
+uint8_t Powerstep01::spiRxBursts[Powerstep01_CMD_ARG_MAX_NB_BYTES][MAX_NUMBER_OF_SHIELDS];
+volatile bool Powerstep01::spiPreemtionByIsr = false;
+volatile bool Powerstep01::isrFlag = false;
+volatile class Powerstep01* Powerstep01::instancePtr = NULL;
   
 /******************************************************//**
  * @brief  Constructor
  * @param  None
  * @retval None
  **********************************************************/ 
-L6474::L6474()
+Powerstep01::Powerstep01()
 {
   uint8_t i;
   for (i = 0; i < MAX_NUMBER_OF_SHIELDS; i++)
@@ -56,17 +55,17 @@ L6474::L6474()
  * to the Flag Interrupt
  * @retval None
  **********************************************************/
-void L6474::AttachFlagInterrupt(void (*callback)(void))
+void Powerstep01::AttachFlagInterrupt(void (*callback)(void))
 {
   flagInterruptCallback = (volatile void (*)())callback;
 }
 
 /******************************************************//**
- * @brief Starts the L6474 library
- * @param[in] nbShields Number of L6474 shields to use (from 1 to 3)
+ * @brief Starts the Powerstep01 library
+ * @param[in] nbShields Number of Powerstep01 shields to use (from 1 to 3)
  * @retval None
  **********************************************************/
-void L6474::Begin(uint8_t nbShields)
+void Powerstep01::Begin(uint8_t nbShields)
 {
   numberOfShields = nbShields;
   
@@ -77,25 +76,25 @@ void L6474::Begin(uint8_t nbShields)
   SPI.setClockDivider(SPI_CLOCK_DIV4);
   
   // flag pin
-  pinMode(L6474_FLAG_Pin, INPUT_PULLUP);
+  pinMode(Powerstep01_FLAG_Pin, INPUT_PULLUP);
   attachInterrupt(0, FlagInterruptHandler, FALLING);
   
   //reset pin
-  pinMode(L6474_Reset_Pin, OUTPUT);
+  pinMode(Powerstep01_Reset_Pin, OUTPUT);
   
   switch (nbShields)
   {
     case 3:
-      pinMode(L6474_DIR_3_Pin, OUTPUT);
-      pinMode(L6474_PWM_3_Pin, OUTPUT);
+      pinMode(Powerstep01_DIR_3_Pin, OUTPUT);
+      pinMode(Powerstep01_PWM_3_Pin, OUTPUT);
       PwmInit(2);
     case 2:
-      pinMode(L6474_DIR_2_Pin, OUTPUT);
-      pinMode(L6474_PWM_2_Pin, OUTPUT);
+      pinMode(Powerstep01_DIR_2_Pin, OUTPUT);
+      pinMode(Powerstep01_PWM_2_Pin, OUTPUT);
       PwmInit(1);
     case 1:
-      pinMode(L6474_DIR_1_Pin, OUTPUT);
-      pinMode(L6474_PWM_1_Pin, OUTPUT);
+      pinMode(Powerstep01_DIR_1_Pin, OUTPUT);
+      pinMode(Powerstep01_PWM_1_Pin, OUTPUT);
       PwmInit(0);
     default:
       ;
@@ -104,10 +103,10 @@ void L6474::Begin(uint8_t nbShields)
   /* Standby-reset deactivation */
   ReleaseReset();
   
-  /* Set all registers and context variables to the predefined values from l6474_target_config.h */
+  /* Set all registers and context variables to the predefined values from Powerstep01_target_config.h */
   SetShieldParamsToPredefinedValues();
   
-  /* Disable L6474 powerstage */
+  /* Disable Powerstep01 powerstage */
   for (uint32_t i = 0; i < nbShields; i++)
   {
     CmdDisable(i);
@@ -121,7 +120,7 @@ void L6474::Begin(uint8_t nbShields)
  * @param[in] shieldId (from 0 to 2)
  * @retval Acceleration in pps^2
  **********************************************************/
-uint16_t L6474::GetAcceleration(uint8_t shieldId)
+uint16_t Powerstep01::GetAcceleration(uint8_t shieldId)
 {                                                  
   return (shieldPrm[shieldId].acceleration);
 }            
@@ -131,7 +130,7 @@ uint16_t L6474::GetAcceleration(uint8_t shieldId)
  * @param[in] shieldId (from 0 to 2)
  * @retval Speed in pps
  **********************************************************/
-uint16_t L6474::GetCurrentSpeed(uint8_t shieldId)
+uint16_t Powerstep01::GetCurrentSpeed(uint8_t shieldId)
 {
   return shieldPrm[shieldId].speed;
 }
@@ -141,7 +140,7 @@ uint16_t L6474::GetCurrentSpeed(uint8_t shieldId)
  * @param[in] shieldId (from 0 to 2)
  * @retval Deceleration in pps^2
  **********************************************************/
-uint16_t L6474::GetDeceleration(uint8_t shieldId)
+uint16_t Powerstep01::GetDeceleration(uint8_t shieldId)
 {                                                  
   return (shieldPrm[shieldId].deceleration);
 }          
@@ -149,11 +148,11 @@ uint16_t L6474::GetDeceleration(uint8_t shieldId)
 /******************************************************//**
  * @brief Returns the FW version of the library
  * @param None
- * @retval L6474_FW_VERSION
+ * @retval Powerstep01_FW_VERSION
  **********************************************************/
-uint8_t L6474::GetFwVersion(void)
+uint8_t Powerstep01::GetFwVersion(void)
 {
-  return (L6474_FW_VERSION);
+  return (Powerstep01_FW_VERSION);
 }
 
 /******************************************************//**
@@ -161,9 +160,9 @@ uint8_t L6474::GetFwVersion(void)
  * @param[in] shieldId (from 0 to 2)
  * @retval Mark register value converted in a 32b signed integer 
  **********************************************************/
-int32_t L6474::GetMark(uint8_t shieldId)
+int32_t Powerstep01::GetMark(uint8_t shieldId)
 {
-  return ConvertPosition(CmdGetParam(shieldId,L6474_MARK));
+  return ConvertPosition(CmdGetParam(shieldId,Powerstep01_MARK));
 }
 
 /******************************************************//**
@@ -171,7 +170,7 @@ int32_t L6474::GetMark(uint8_t shieldId)
  * @param[in] shieldId (from 0 to 2)
  * @retval maxSpeed in pps
  **********************************************************/
-uint16_t L6474::GetMaxSpeed(uint8_t shieldId)
+uint16_t Powerstep01::GetMaxSpeed(uint8_t shieldId)
 {                                                  
   return (shieldPrm[shieldId].maxSpeed);
 }                                                     
@@ -181,7 +180,7 @@ uint16_t L6474::GetMaxSpeed(uint8_t shieldId)
  * @param[in] shieldId (from 0 to 2)
  * @retval minSpeed in pps
  **********************************************************/
-uint16_t L6474::GetMinSpeed(uint8_t shieldId)
+uint16_t Powerstep01::GetMinSpeed(uint8_t shieldId)
 {                                                  
   return (shieldPrm[shieldId].minSpeed);
 }                                                     
@@ -191,9 +190,9 @@ uint16_t L6474::GetMinSpeed(uint8_t shieldId)
  * @param[in] shieldId (from 0 to 2)
  * @retval ABS_POSITION register value converted in a 32b signed integer
  **********************************************************/
-int32_t L6474::GetPosition(uint8_t shieldId)
+int32_t Powerstep01::GetPosition(uint8_t shieldId)
 {
-  return ConvertPosition(CmdGetParam(shieldId,L6474_ABS_POS));
+  return ConvertPosition(CmdGetParam(shieldId,Powerstep01_ABS_POS));
 }
 
 /******************************************************//**
@@ -201,7 +200,7 @@ int32_t L6474::GetPosition(uint8_t shieldId)
  * @param[in] shieldId (from 0 to 2)
  * @retval State (ACCELERATING, DECELERATING, STEADY or INACTIVE)
  **********************************************************/
-shieldState_t L6474::GetShieldState(uint8_t shieldId)
+shieldState_t Powerstep01::GetShieldState(uint8_t shieldId)
 {
   return shieldPrm[shieldId].motionState;
 }
@@ -211,7 +210,7 @@ shieldState_t L6474::GetShieldState(uint8_t shieldId)
  * @param[in] shieldId (from 0 to 2)
  * @retval None
  **********************************************************/
-void L6474::GoHome(uint8_t shieldId)
+void Powerstep01::GoHome(uint8_t shieldId)
 {
   GoTo(shieldId, 0);
 } 
@@ -221,11 +220,11 @@ void L6474::GoHome(uint8_t shieldId)
  * @param[in] shieldId (from 0 to 2)
  * @retval None
  **********************************************************/
-void L6474::GoMark(uint8_t shieldId)
+void Powerstep01::GoMark(uint8_t shieldId)
 {
 	uint32_t mark;
 
-	mark = ConvertPosition(CmdGetParam(shieldId,L6474_MARK));
+	mark = ConvertPosition(CmdGetParam(shieldId,Powerstep01_MARK));
 	GoTo(shieldId,mark);  
 }
 
@@ -235,7 +234,7 @@ void L6474::GoMark(uint8_t shieldId)
  * @param[in] targetPosition absolute position in steps
  * @retval None
  **********************************************************/
-void L6474::GoTo(uint8_t shieldId, int32_t targetPosition)
+void Powerstep01::GoTo(uint8_t shieldId, int32_t targetPosition)
 {
   dir_t direction;
   int32_t steps;
@@ -247,7 +246,7 @@ void L6474::GoTo(uint8_t shieldId, int32_t targetPosition)
   }
 
   /* Get current position */
-  shieldPrm[shieldId].currentPosition = ConvertPosition(CmdGetParam(shieldId,L6474_ABS_POS));
+  shieldPrm[shieldId].currentPosition = ConvertPosition(CmdGetParam(shieldId,Powerstep01_ABS_POS));
   
   /* Compute the number of steps to perform */
   steps = targetPosition - shieldPrm[shieldId].currentPosition;
@@ -284,7 +283,7 @@ void L6474::GoTo(uint8_t shieldId, int32_t targetPosition)
  * @param[in] shieldId (from 0 to 2)
  * @retval None
  **********************************************************/
-void L6474::HardStop(uint8_t shieldId) 
+void Powerstep01::HardStop(uint8_t shieldId) 
 {
   /* Disable corresponding PWM */
   PwmStop(shieldId);
@@ -297,7 +296,7 @@ void L6474::HardStop(uint8_t shieldId)
   shieldPrm[shieldId].commandExecuted = NO_CMD;
   shieldPrm[shieldId].stepsToTake = MAX_STEPS;  
 
-#ifdef _DEBUG_L6474
+#ifdef _DEBUG_Powerstep01
  Serial.println("Inactive\n");
 #endif     
 }
@@ -309,7 +308,7 @@ void L6474::HardStop(uint8_t shieldId)
  * @param[in] stepCount Number of steps to perform
  * @retval None
  **********************************************************/
-void L6474::Move(uint8_t shieldId, dir_t direction, uint32_t stepCount)
+void Powerstep01::Move(uint8_t shieldId, dir_t direction, uint32_t stepCount)
 {
   /* Eventually deactivate motor */
   if (shieldPrm[shieldId].motionState != INACTIVE) 
@@ -323,7 +322,7 @@ void L6474::Move(uint8_t shieldId, dir_t direction, uint32_t stepCount)
     
     shieldPrm[shieldId].commandExecuted = MOVE_CMD;
     
-    shieldPrm[shieldId].currentPosition = ConvertPosition(CmdGetParam(shieldId,L6474_ABS_POS));
+    shieldPrm[shieldId].currentPosition = ConvertPosition(CmdGetParam(shieldId,Powerstep01_ABS_POS));
     
     /* Direction setup */
     SetDirection(shieldId,direction);
@@ -336,11 +335,11 @@ void L6474::Move(uint8_t shieldId, dir_t direction, uint32_t stepCount)
 }
 
 /******************************************************//**
- * @brief Resets all L6474 shields
+ * @brief Resets all Powerstep01 shields
  * @param None
  * @retval None
  **********************************************************/
-void L6474::ResetAllShields(void)
+void Powerstep01::ResetAllShields(void)
 {
  	uint8_t loop;
  	
@@ -361,7 +360,7 @@ void L6474::ResetAllShields(void)
  * @param[in] direction FORWARD or BACKWARD
  * @retval None
  **********************************************************/
-void L6474::Run(uint8_t shieldId, dir_t direction)
+void Powerstep01::Run(uint8_t shieldId, dir_t direction)
 {
   /* Eventually deactivate motor */
   if (shieldPrm[shieldId].motionState != INACTIVE) 
@@ -386,7 +385,7 @@ void L6474::Run(uint8_t shieldId, dir_t direction)
  * @note The command is not performed is the shield is executing 
  * a MOVE or GOTO command (but it can be used during a RUN command)
  **********************************************************/
-bool L6474::SetAcceleration(uint8_t shieldId,uint16_t newAcc)
+bool Powerstep01::SetAcceleration(uint8_t shieldId,uint16_t newAcc)
 {                                                  
   bool cmdExecuted = false;
   if ((newAcc != 0)&&
@@ -407,7 +406,7 @@ bool L6474::SetAcceleration(uint8_t shieldId,uint16_t newAcc)
  * @note The command is not performed is the shield is executing 
  * a MOVE or GOTO command (but it can be used during a RUN command)
  **********************************************************/
-bool L6474::SetDeceleration(uint8_t shieldId, uint16_t newDec)
+bool Powerstep01::SetDeceleration(uint8_t shieldId, uint16_t newDec)
 {                                                  
   bool cmdExecuted = false;
   if ((newDec != 0)&& 
@@ -425,9 +424,9 @@ bool L6474::SetDeceleration(uint8_t shieldId, uint16_t newDec)
  * @param[in] shieldId (from 0 to 2)
  * @retval None
  **********************************************************/
-void L6474::SetHome(uint8_t shieldId)
+void Powerstep01::SetHome(uint8_t shieldId)
 {
-  CmdSetParam(shieldId, L6474_ABS_POS, 0);
+  CmdSetParam(shieldId, Powerstep01_ABS_POS, 0);
 }
  
 /******************************************************//**
@@ -435,10 +434,10 @@ void L6474::SetHome(uint8_t shieldId)
  * @param[in] shieldId (from 0 to 2)
  * @retval None
  **********************************************************/
-void L6474::SetMark(uint8_t shieldId)
+void Powerstep01::SetMark(uint8_t shieldId)
 {
-  uint32_t mark = CmdGetParam(shieldId,L6474_ABS_POS);
-  CmdSetParam(shieldId,L6474_MARK, mark);
+  uint32_t mark = CmdGetParam(shieldId,Powerstep01_ABS_POS);
+  CmdSetParam(shieldId,Powerstep01_MARK, mark);
 }
 
 /******************************************************//**
@@ -449,11 +448,11 @@ void L6474::SetMark(uint8_t shieldId)
  * @note The command is not performed is the shield is executing 
  * a MOVE or GOTO command (but it can be used during a RUN command).
  **********************************************************/
-bool L6474::SetMaxSpeed(uint8_t shieldId, uint16_t newMaxSpeed)
+bool Powerstep01::SetMaxSpeed(uint8_t shieldId, uint16_t newMaxSpeed)
 {                                                  
   bool cmdExecuted = false;
-  if ((newMaxSpeed > L6474_MIN_PWM_FREQ)&&
-      (newMaxSpeed <= L6474_MAX_PWM_FREQ) &&
+  if ((newMaxSpeed > Powerstep01_MIN_PWM_FREQ)&&
+      (newMaxSpeed <= Powerstep01_MAX_PWM_FREQ) &&
       (shieldPrm[shieldId].minSpeed <= newMaxSpeed) &&
       ((shieldPrm[shieldId].motionState == INACTIVE)||
        (shieldPrm[shieldId].commandExecuted == RUN_CMD)))
@@ -472,11 +471,11 @@ bool L6474::SetMaxSpeed(uint8_t shieldId, uint16_t newMaxSpeed)
  * @note The command is not performed is the shield is executing 
  * a MOVE or GOTO command (but it can be used during a RUN command).
  **********************************************************/
-bool L6474::SetMinSpeed(uint8_t shieldId, uint16_t newMinSpeed)
+bool Powerstep01::SetMinSpeed(uint8_t shieldId, uint16_t newMinSpeed)
 {                                                  
   bool cmdExecuted = false;
-  if ((newMinSpeed >= L6474_MIN_PWM_FREQ)&&
-      (newMinSpeed < L6474_MAX_PWM_FREQ) &&
+  if ((newMinSpeed >= Powerstep01_MIN_PWM_FREQ)&&
+      (newMinSpeed < Powerstep01_MAX_PWM_FREQ) &&
       (newMinSpeed <= shieldPrm[shieldId].maxSpeed) && 
       ((shieldPrm[shieldId].motionState == INACTIVE)||
        (shieldPrm[shieldId].commandExecuted == RUN_CMD)))
@@ -493,7 +492,7 @@ bool L6474::SetMinSpeed(uint8_t shieldId, uint16_t newMinSpeed)
  * @retval true if the command is successfully executed, else false
  * @note The command is not performed is the shield is in INACTIVE state.
  **********************************************************/
-bool L6474::SoftStop(uint8_t shieldId)
+bool Powerstep01::SoftStop(uint8_t shieldId)
 {	
   bool cmdExecuted = false;
   if (shieldPrm[shieldId].motionState != INACTIVE)
@@ -509,39 +508,39 @@ bool L6474::SoftStop(uint8_t shieldId)
  * @param[in] shieldId (from 0 to 2)
  * @retval None
  **********************************************************/
-void L6474::WaitWhileActive(uint8_t shieldId)
+void Powerstep01::WaitWhileActive(uint8_t shieldId)
  {
 	/* Wait while motor is running */
 	while (GetShieldState(shieldId) != INACTIVE);
 }
 
 /******************************************************//**
- * @brief  Issue the Disable command to the L6474 of the specified shield
+ * @brief  Issue the Disable command to the Powerstep01 of the specified shield
  * @param[in] shieldId (from 0 to 2)
  * @retval None
  **********************************************************/
-void L6474::CmdDisable(uint8_t shieldId)
+void Powerstep01::CmdDisable(uint8_t shieldId)
 {
-  SendCommand(shieldId, L6474_DISABLE);
+  SendCommand(shieldId, Powerstep01_DISABLE);
 }
 
 /******************************************************//**
- * @brief  Issues the Enable command to the L6474 of the specified shield
+ * @brief  Issues the Enable command to the Powerstep01 of the specified shield
  * @param[in] shieldId (from 0 to 2)
  * @retval None
  **********************************************************/
-void L6474::CmdEnable(uint8_t shieldId)
+void Powerstep01::CmdEnable(uint8_t shieldId)
 {
-  SendCommand(shieldId, L6474_ENABLE);
+  SendCommand(shieldId, Powerstep01_ENABLE);
 }
 
 /******************************************************//**
- * @brief  Issues the GetParam command to the L6474 of the specified shield
+ * @brief  Issues the GetParam command to the Powerstep01 of the specified shield
  * @param[in] shieldId (from 0 to 2)
- * @param[in] param Register adress (L6474_ABS_POS, L6474_MARK,...)
+ * @param[in] param Register adress (Powerstep01_ABS_POS, Powerstep01_MARK,...)
  * @retval Register value
  **********************************************************/
-uint32_t L6474::CmdGetParam(uint8_t shieldId, L6474_Registers_t param)
+uint32_t Powerstep01::CmdGetParam(uint8_t shieldId, Powerstep01_Registers_t param)
 {
   uint32_t i;
   uint32_t spiRxData;
@@ -561,29 +560,29 @@ uint32_t L6474::CmdGetParam(uint8_t shieldId, L6474_Registers_t param)
   
     for (i = 0; i < numberOfShields; i++)
     {
-      spiTxBursts[0][i] = L6474_NOP;
-      spiTxBursts[1][i] = L6474_NOP;
-      spiTxBursts[2][i] = L6474_NOP;
-      spiTxBursts[3][i] = L6474_NOP;
+      spiTxBursts[0][i] = Powerstep01_NOP;
+      spiTxBursts[1][i] = Powerstep01_NOP;
+      spiTxBursts[2][i] = Powerstep01_NOP;
+      spiTxBursts[3][i] = Powerstep01_NOP;
       spiRxBursts[1][i] = 0;
       spiRxBursts[2][i] = 0;
       spiRxBursts[3][i] = 0;    
     }
     switch (param)
     {
-      case L6474_ABS_POS: ;
-      case L6474_MARK:
-        spiTxBursts[0][spiIndex] = ((uint8_t)L6474_GET_PARAM )| (param);
+      case Powerstep01_ABS_POS: ;
+      case Powerstep01_MARK:
+        spiTxBursts[0][spiIndex] = ((uint8_t)Powerstep01_GET_PARAM )| (param);
         maxArgumentNbBytes = 3;
         break;
-      case L6474_EL_POS: ;
-      case L6474_CONFIG: ;
-      case L6474_STATUS:
-        spiTxBursts[1][spiIndex] = ((uint8_t)L6474_GET_PARAM )| (param);
+      case Powerstep01_EL_POS: ;
+      case Powerstep01_CONFIG: ;
+      case Powerstep01_STATUS:
+        spiTxBursts[1][spiIndex] = ((uint8_t)Powerstep01_GET_PARAM )| (param);
         maxArgumentNbBytes = 2;
         break;
       default:
-        spiTxBursts[2][spiIndex] = ((uint8_t)L6474_GET_PARAM )| (param);
+        spiTxBursts[2][spiIndex] = ((uint8_t)Powerstep01_GET_PARAM )| (param);
         maxArgumentNbBytes = 1;
     }
     
@@ -593,8 +592,8 @@ uint32_t L6474::CmdGetParam(uint8_t shieldId, L6474_Registers_t param)
     itDisable = true;
   } while (spiPreemtionByIsr); // check pre-emption by ISR
     
-  for (i = L6474_CMD_ARG_MAX_NB_BYTES-1-maxArgumentNbBytes;
-       i < L6474_CMD_ARG_MAX_NB_BYTES;
+  for (i = Powerstep01_CMD_ARG_MAX_NB_BYTES-1-maxArgumentNbBytes;
+       i < Powerstep01_CMD_ARG_MAX_NB_BYTES;
        i++)
   {
      WriteBytes(&spiTxBursts[i][0],
@@ -612,14 +611,14 @@ uint32_t L6474::CmdGetParam(uint8_t shieldId, L6474_Registers_t param)
 }
 
 /******************************************************//**
- * @brief  Issues the GetStatus command to the L6474 of the specified shield
+ * @brief  Issues the GetStatus command to the Powerstep01 of the specified shield
  * @param[in] shieldId (from 0 to 2)
  * @retval Status Register value
  * @note Once the GetStatus command is performed, the flags of the status register
  * are reset. This is not the case when the status register is read with the
  * GetParam command (via the functions ReadStatusRegister or CmdGetParam).
  **********************************************************/
-uint16_t L6474::CmdGetStatus(uint8_t shieldId)
+uint16_t Powerstep01::CmdGetStatus(uint8_t shieldId)
 {
   uint32_t i;
   uint16_t status;
@@ -638,13 +637,13 @@ uint16_t L6474::CmdGetStatus(uint8_t shieldId)
 
     for (i = 0; i < numberOfShields; i++)
     {
-       spiTxBursts[0][i] = L6474_NOP;
-       spiTxBursts[1][i] = L6474_NOP;
-       spiTxBursts[2][i] = L6474_NOP;
+       spiTxBursts[0][i] = Powerstep01_NOP;
+       spiTxBursts[1][i] = Powerstep01_NOP;
+       spiTxBursts[2][i] = Powerstep01_NOP;
        spiRxBursts[1][i] = 0;
        spiRxBursts[2][i] = 0;
     }
-    spiTxBursts[0][spiIndex] = L6474_GET_STATUS;
+    spiTxBursts[0][spiIndex] = Powerstep01_GET_STATUS;
 
     /* Disable interruption before checking */
     /* pre-emption by ISR and SPI transfers*/
@@ -652,7 +651,7 @@ uint16_t L6474::CmdGetStatus(uint8_t shieldId)
     itDisable = true;
   } while (spiPreemtionByIsr); // check pre-emption by ISR
 
-  for (i = 0; i < L6474_CMD_ARG_NB_BYTES_GET_STATUS + L6474_RSP_NB_BYTES_GET_STATUS; i++)
+  for (i = 0; i < Powerstep01_CMD_ARG_NB_BYTES_GET_STATUS + Powerstep01_RSP_NB_BYTES_GET_STATUS; i++)
   {
      WriteBytes(&spiTxBursts[i][0], &spiRxBursts[i][0]);
   }
@@ -665,24 +664,24 @@ uint16_t L6474::CmdGetStatus(uint8_t shieldId)
 }
 
 /******************************************************//**
- * @brief  Issues the Nop command to the L6474 of the specified shield
+ * @brief  Issues the Nop command to the Powerstep01 of the specified shield
  * @param[in] shieldId (from 0 to 2)
  * @retval None
  **********************************************************/
-void L6474::CmdNop(uint8_t shieldId)
+void Powerstep01::CmdNop(uint8_t shieldId)
 {
-  SendCommand(shieldId, L6474_NOP);
+  SendCommand(shieldId, Powerstep01_NOP);
 }
 
 /******************************************************//**
- * @brief  Issues the SetParam command to the L6474 of the specified shield
+ * @brief  Issues the SetParam command to the Powerstep01 of the specified shield
  * @param[in] shieldId (from 0 to 2)
- * @param[in] param Register adress (L6474_ABS_POS, L6474_MARK,...)
+ * @param[in] param Register adress (Powerstep01_ABS_POS, Powerstep01_MARK,...)
  * @param[in] value Value to set in the register
  * @retval None
  **********************************************************/
-void L6474::CmdSetParam(uint8_t shieldId,
-                        L6474_Registers_t param,
+void Powerstep01::CmdSetParam(uint8_t shieldId,
+                        Powerstep01_Registers_t param,
                         uint32_t value)
 {
   uint32_t i;
@@ -700,22 +699,22 @@ void L6474::CmdSetParam(uint8_t shieldId,
     }
     for (i = 0; i < numberOfShields; i++)
     {
-      spiTxBursts[0][i] = L6474_NOP;
-      spiTxBursts[1][i] = L6474_NOP;
-      spiTxBursts[2][i] = L6474_NOP;
-      spiTxBursts[3][i] = L6474_NOP;
+      spiTxBursts[0][i] = Powerstep01_NOP;
+      spiTxBursts[1][i] = Powerstep01_NOP;
+      spiTxBursts[2][i] = Powerstep01_NOP;
+      spiTxBursts[3][i] = Powerstep01_NOP;
     }
     switch (param)
   {
-    case L6474_ABS_POS: ;
-    case L6474_MARK:
+    case Powerstep01_ABS_POS: ;
+    case Powerstep01_MARK:
         spiTxBursts[0][spiIndex] = param;
         spiTxBursts[1][spiIndex] = (uint8_t)(value >> 16);
         spiTxBursts[2][spiIndex] = (uint8_t)(value >> 8);
         maxArgumentNbBytes = 3;
         break;
-    case L6474_EL_POS: ;
-    case L6474_CONFIG:
+    case Powerstep01_EL_POS: ;
+    case Powerstep01_CONFIG:
         spiTxBursts[1][spiIndex] = param;
         spiTxBursts[2][spiIndex] = (uint8_t)(value >> 8);
         maxArgumentNbBytes = 2;
@@ -733,8 +732,8 @@ void L6474::CmdSetParam(uint8_t shieldId,
   } while (spiPreemtionByIsr); // check pre-emption by ISR
  
   /* SPI transfer */
-  for (i = L6474_CMD_ARG_MAX_NB_BYTES-1-maxArgumentNbBytes;
-       i < L6474_CMD_ARG_MAX_NB_BYTES;
+  for (i = Powerstep01_CMD_ARG_MAX_NB_BYTES-1-maxArgumentNbBytes;
+       i < Powerstep01_CMD_ARG_MAX_NB_BYTES;
        i++)
   {
      WriteBytes(&spiTxBursts[i][0],&spiRxBursts[i][0]);
@@ -750,38 +749,38 @@ void L6474::CmdSetParam(uint8_t shieldId,
  * @note The status register flags are not cleared 
  * at the difference with CmdGetStatus()
  **********************************************************/
-uint16_t L6474::ReadStatusRegister(uint8_t shieldId)
+uint16_t Powerstep01::ReadStatusRegister(uint8_t shieldId)
 {
-  return (CmdGetParam(shieldId,L6474_STATUS));
+  return (CmdGetParam(shieldId,Powerstep01_STATUS));
 }
 
 /******************************************************//**
- * @brief  Releases the L6474 reset (pin set to High) of all shields
+ * @brief  Releases the Powerstep01 reset (pin set to High) of all shields
  * @param  None
  * @retval None
  **********************************************************/
-void L6474::ReleaseReset(void)
+void Powerstep01::ReleaseReset(void)
 { 
-  digitalWrite(L6474_Reset_Pin, HIGH);
+  digitalWrite(Powerstep01_Reset_Pin, HIGH);
 }
 
 /******************************************************//**
- * @brief  Resets the L6474 (reset pin set to low) of all shields
+ * @brief  Resets the Powerstep01 (reset pin set to low) of all shields
  * @param  None
  * @retval None
  **********************************************************/
-void L6474::Reset(void)
+void Powerstep01::Reset(void)
 {
-  digitalWrite(L6474_Reset_Pin, LOW);
+  digitalWrite(Powerstep01_Reset_Pin, LOW);
 }
 
 /******************************************************//**
  * @brief  Set the stepping mode 
  * @param[in] shieldId (from 0 to 2)
- * @param[in] stepMod from full step to 1/16 microstep as specified in enum L6474_STEP_SEL_t
+ * @param[in] stepMod from full step to 1/16 microstep as specified in enum Powerstep01_STEP_SEL_t
  * @retval None
  **********************************************************/
-void L6474::SelectStepMode(uint8_t shieldId, L6474_STEP_SEL_t stepMod)
+void Powerstep01::SelectStepMode(uint8_t shieldId, Powerstep01_STEP_SEL_t stepMod)
 {
   uint8_t stepModeRegister;
   
@@ -792,10 +791,10 @@ void L6474::SelectStepMode(uint8_t shieldId, L6474_STEP_SEL_t stepMod)
   }
   
   /* Read Step mode register and clear STEP_SEL field */
-  stepModeRegister = (uint8_t)(0xF8 & CmdGetParam(shieldId,L6474_STEP_MODE)) ;
+  stepModeRegister = (uint8_t)(0xF8 & CmdGetParam(shieldId,Powerstep01_STEP_MODE)) ;
   
   /* Apply new step mode */
-  CmdSetParam(shieldId, L6474_STEP_MODE, stepModeRegister | (uint8_t)stepMod);
+  CmdSetParam(shieldId, Powerstep01_STEP_MODE, stepModeRegister | (uint8_t)stepMod);
 
   /* Reset abs pos register */
   SetHome(shieldId);
@@ -809,7 +808,7 @@ void L6474::SelectStepMode(uint8_t shieldId, L6474_STEP_SEL_t stepMod)
  * is in INACTIVE state
  * @retval None
  **********************************************************/
-void L6474::SetDirection(uint8_t shieldId, dir_t dir)
+void Powerstep01::SetDirection(uint8_t shieldId, dir_t dir)
 {
   if (shieldPrm[shieldId].motionState == INACTIVE)
   {
@@ -818,13 +817,13 @@ void L6474::SetDirection(uint8_t shieldId, dir_t dir)
     switch (shieldId)
     {
       case 2:
-        digitalWrite(L6474_DIR_3_Pin, dir);
+        digitalWrite(Powerstep01_DIR_3_Pin, dir);
         break;
       case 1:
-        digitalWrite(L6474_DIR_2_Pin, dir);
+        digitalWrite(Powerstep01_DIR_2_Pin, dir);
         break;
       case 0:
-        digitalWrite(L6474_DIR_1_Pin, dir);
+        digitalWrite(Powerstep01_DIR_1_Pin, dir);
         break;
       default:
         ;
@@ -839,7 +838,7 @@ void L6474::SetDirection(uint8_t shieldId, dir_t dir)
  * @note Should only be used for 3 shields configuration.
  * Else, prefer the standard Arduino function delay().
  **********************************************************/
-void L6474::WaitMs(uint16_t msDelay)
+void Powerstep01::WaitMs(uint16_t msDelay)
 {
   uint16_t i;
   for (i = 0; i < msDelay ; i++)
@@ -855,10 +854,10 @@ void L6474::WaitMs(uint16_t msDelay)
  * @note Should be only used for 3 shields configuration.
  * Else, prefer the standard Arduino function delayMicroseconds().
  * Besides, this function is a copy of delayMicroseconds inside
- * the L6474 library to avoid dependencies conflicts 
+ * the Powerstep01 library to avoid dependencies conflicts
  * (a redefinition of ISR(TIMER0_OVF_vect)). 
  **********************************************************/
-void L6474::WaitUs(uint16_t usDelay)
+void Powerstep01::WaitUs(uint16_t usDelay)
 {
 	// calling avrlib's delay_us() function with low values (e.g. 1 or
 	// 2 microseconds) gives delays longer than desired.
@@ -926,13 +925,13 @@ void L6474::WaitUs(uint16_t usDelay)
 }  
                   
 /******************************************************//**
- * @brief  Gets the pointer to the L6474 instance
+ * @brief  Gets the pointer to the Powerstep01 instance
  * @param  None
- * @retval Pointer to the instance of L6474
+ * @retval Pointer to the instance of Powerstep01
   **********************************************************/
-class L6474* L6474::GetInstancePtr(void)
+class Powerstep01* Powerstep01::GetInstancePtr(void)
 {
-  return (class L6474*)instancePtr;
+  return (class Powerstep01*)instancePtr;
 }
 
 /******************************************************//**
@@ -941,7 +940,7 @@ class L6474* L6474::GetInstancePtr(void)
  * @retval None
  * @note Must only be called by the timer ISR
  **********************************************************/
-void L6474::StepClockHandler(uint8_t shieldId)
+void Powerstep01::StepClockHandler(uint8_t shieldId)
 {
   /* Set isr flag */
   isrFlag = true;
@@ -953,7 +952,7 @@ void L6474::StepClockHandler(uint8_t shieldId)
   if ((shieldPrm[shieldId].commandExecuted != RUN_CMD) && 
       ((shieldPrm[shieldId].relativePos % 10) == 00))
   {
-    uint32_t AbsPos= ConvertPosition(CmdGetParam(shieldId,L6474_ABS_POS));
+    uint32_t AbsPos= ConvertPosition(CmdGetParam(shieldId,Powerstep01_ABS_POS));
   
     /* Correct estimated position if needed */
     if (AbsPos != 0)
@@ -961,9 +960,9 @@ void L6474::StepClockHandler(uint8_t shieldId)
       if ((shieldPrm[shieldId].direction == FORWARD) && 
           (AbsPos != shieldPrm[shieldId].currentPosition + shieldPrm[shieldId].relativePos))
       {
-#ifdef _DEBUG_L6474
-        snprintf(l6474StrOut, DEBUG_BUFFER_SIZE, "F EstPos:%ld RealPos: %ld\n",shieldPrm[shieldId].relativePos,(AbsPos - shieldPrm[shieldId].currentPosition));
-        Serial.println(l6474StrOut);  
+#ifdef _DEBUG_Powerstep01
+        snprintf(Powerstep01StrOut, DEBUG_BUFFER_SIZE, "F EstPos:%ld RealPos: %ld\n",shieldPrm[shieldId].relativePos,(AbsPos - shieldPrm[shieldId].currentPosition));
+        Serial.println(Powerstep01StrOut);
 #endif                
         shieldPrm[shieldId].relativePos = AbsPos - shieldPrm[shieldId].currentPosition;
         
@@ -971,9 +970,9 @@ void L6474::StepClockHandler(uint8_t shieldId)
       else if ((shieldPrm[shieldId].direction == BACKWARD) && 
                (AbsPos != shieldPrm[shieldId].currentPosition - shieldPrm[shieldId].relativePos))
       {
-#ifdef _DEBUG_L6474
-        snprintf(l6474StrOut, DEBUG_BUFFER_SIZE, "B EstPos:%ld RealPos: %ld\n",shieldPrm[shieldId].relativePos,(AbsPos - shieldPrm[shieldId].currentPosition));
-        Serial.println(l6474StrOut);  
+#ifdef _DEBUG_Powerstep01
+        snprintf(Powerstep01StrOut, DEBUG_BUFFER_SIZE, "B EstPos:%ld RealPos: %ld\n",shieldPrm[shieldId].relativePos,(AbsPos - shieldPrm[shieldId].currentPosition));
+        Serial.println(Powerstep01StrOut);
 #endif        
         shieldPrm[shieldId].relativePos = shieldPrm[shieldId].currentPosition - AbsPos;
       }
@@ -990,9 +989,9 @@ void L6474::StepClockHandler(uint8_t shieldId)
         {
           shieldPrm[shieldId].motionState = DECELERATING;
           shieldPrm[shieldId].accu = 0;
-#ifdef _DEBUG_L6474
-          snprintf(l6474StrOut, DEBUG_BUFFER_SIZE, "Acc->Dec: speed: %u relativepos: %ld \n",shieldPrm[shieldId].speed,shieldPrm[shieldId].relativePos);
-          Serial.println(l6474StrOut);  
+#ifdef _DEBUG_Powerstep01
+          snprintf(Powerstep01StrOut, DEBUG_BUFFER_SIZE, "Acc->Dec: speed: %u relativepos: %ld \n",shieldPrm[shieldId].speed,shieldPrm[shieldId].relativePos);
+          Serial.println(Powerstep01StrOut);
 #endif    
         }
         else if ((shieldPrm[shieldId].speed >= shieldPrm[shieldId].maxSpeed)||
@@ -1000,9 +999,9 @@ void L6474::StepClockHandler(uint8_t shieldId)
                   (shieldPrm[shieldId].relativePos == shieldPrm[shieldId].endAccPos)))
         {
           shieldPrm[shieldId].motionState = STEADY;
-#ifdef _DEBUG_L6474
-        snprintf(l6474StrOut, DEBUG_BUFFER_SIZE, "Acc->Steady: speed: %u relativepos: %ld \n",shieldPrm[shieldId].speed,shieldPrm[shieldId].relativePos);
-        Serial.println(l6474StrOut);  
+#ifdef _DEBUG_Powerstep01
+        snprintf(Powerstep01StrOut, DEBUG_BUFFER_SIZE, "Acc->Steady: speed: %u relativepos: %ld \n",shieldPrm[shieldId].speed,shieldPrm[shieldId].relativePos);
+        Serial.println(Powerstep01StrOut);
 #endif    
         }
         else
@@ -1051,18 +1050,18 @@ void L6474::StepClockHandler(uint8_t shieldId)
       {
         /* Motion process complete */
         HardStop(shieldId);
-#ifdef _DEBUG_L6474
-        snprintf(l6474StrOut, DEBUG_BUFFER_SIZE, "Dec->Stop: speed: %u relativepos: %ld \n",shieldPrm[shieldId].speed,shieldPrm[shieldId].relativePos );
-        Serial.println(l6474StrOut);  
+#ifdef _DEBUG_Powerstep01
+        snprintf(Powerstep01StrOut, DEBUG_BUFFER_SIZE, "Dec->Stop: speed: %u relativepos: %ld \n",shieldPrm[shieldId].speed,shieldPrm[shieldId].relativePos );
+        Serial.println(Powerstep01StrOut);
 #endif   
       }
       else if ((shieldPrm[shieldId].commandExecuted == RUN_CMD)&&
                (shieldPrm[shieldId].speed <= shieldPrm[shieldId].maxSpeed))
       {
         shieldPrm[shieldId].motionState = STEADY;
-#ifdef _DEBUG_L6474
-        snprintf(l6474StrOut, DEBUG_BUFFER_SIZE, "Dec->Steady: speed: %u relativepos: %ld \n",shieldPrm[shieldId].speed,shieldPrm[shieldId].relativePos);
-        Serial.println(l6474StrOut);  
+#ifdef _DEBUG_Powerstep01
+        snprintf(Powerstep01StrOut, DEBUG_BUFFER_SIZE, "Dec->Steady: speed: %u relativepos: %ld \n",shieldPrm[shieldId].speed,shieldPrm[shieldId].relativePos);
+        Serial.println(Powerstep01StrOut);
 #endif            
       }
       else
@@ -1101,15 +1100,15 @@ void L6474::StepClockHandler(uint8_t shieldId)
  * @param[in] newSpeed in pps
  * @retval None
  **********************************************************/
-void L6474::ApplySpeed(uint8_t shieldId, uint16_t newSpeed)
+void Powerstep01::ApplySpeed(uint8_t shieldId, uint16_t newSpeed)
 {
-  if (newSpeed < L6474_MIN_PWM_FREQ)
+  if (newSpeed < Powerstep01_MIN_PWM_FREQ)
   {
-    newSpeed = L6474_MIN_PWM_FREQ;  
+    newSpeed = Powerstep01_MIN_PWM_FREQ;
   }
-  if (newSpeed > L6474_MAX_PWM_FREQ)
+  if (newSpeed > Powerstep01_MAX_PWM_FREQ)
   {
-    newSpeed = L6474_MAX_PWM_FREQ;
+    newSpeed = Powerstep01_MAX_PWM_FREQ;
   }
   
   shieldPrm[shieldId].speed = newSpeed;
@@ -1144,7 +1143,7 @@ void L6474::ApplySpeed(uint8_t shieldId, uint16_t newSpeed)
  * Else, a triangular move is performed (no steady phase: the maximum speed is never
  * reached.
  **********************************************************/
-void L6474::ComputeSpeedProfile(uint8_t shieldId, uint32_t nbSteps)
+void Powerstep01::ComputeSpeedProfile(uint8_t shieldId, uint32_t nbSteps)
 {
   uint32_t reqAccSteps; 
 	uint32_t reqDecSteps;
@@ -1197,17 +1196,17 @@ void L6474::ComputeSpeedProfile(uint8_t shieldId, uint32_t nbSteps)
  * @param[in] abs_position_reg value of the ABS_POSITION register
  * @retval operation_result 32b signed integer corresponding to the absolute position 
  **********************************************************/
-int32_t L6474::ConvertPosition(uint32_t abs_position_reg)
+int32_t Powerstep01::ConvertPosition(uint32_t abs_position_reg)
 {
 	int32_t operation_result;
 
-  if (abs_position_reg & L6474_ABS_POS_SIGN_BIT_MASK) 
+  if (abs_position_reg & Powerstep01_ABS_POS_SIGN_BIT_MASK)
   {
 		/* Negative register value */
 		abs_position_reg = ~abs_position_reg;
 		abs_position_reg += 1;
 
-		operation_result = (int32_t) (abs_position_reg & L6474_ABS_POS_VALUE_MASK);
+		operation_result = (int32_t) (abs_position_reg & Powerstep01_ABS_POS_VALUE_MASK);
 		operation_result = -operation_result;
   } 
   else 
@@ -1222,7 +1221,7 @@ int32_t L6474::ConvertPosition(uint32_t abs_position_reg)
  * @param None
  * @retval None
  **********************************************************/
-void L6474::FlagInterruptHandler(void)
+void Powerstep01::FlagInterruptHandler(void)
 {
   if (flagInterruptCallback != NULL)
   {
@@ -1237,12 +1236,12 @@ void L6474::FlagInterruptHandler(void)
 }
 
 /******************************************************//**
- * @brief  Sends a command without arguments to the L6474 via the SPI
+ * @brief  Sends a command without arguments to the Powerstep01 via the SPI
  * @param[in] shieldId (from 0 to 2)
  * @param[in] param Command to send 
  * @retval None
  **********************************************************/
-void L6474::SendCommand(uint8_t shieldId, uint8_t param)
+void Powerstep01::SendCommand(uint8_t shieldId, uint8_t param)
 {
   uint8_t spiIndex = numberOfShields - shieldId - 1;
   bool itDisable = false;  
@@ -1259,7 +1258,7 @@ void L6474::SendCommand(uint8_t shieldId, uint8_t param)
   
     for (uint32_t i = 0; i < numberOfShields; i++)
     {
-      spiTxBursts[3][i] = L6474_NOP;     
+      spiTxBursts[3][i] = Powerstep01_NOP;
     }
     spiTxBursts[3][spiIndex] = param;
     
@@ -1276,131 +1275,131 @@ void L6474::SendCommand(uint8_t shieldId, uint8_t param)
 }
 
 /******************************************************//**
- * @brief  Sets the registers of the L6474 to their predefined values 
- * from l6474_target_config.h
+ * @brief  Sets the registers of the Powerstep01 to their predefined values
+ * from Powerstep01_target_config.h
  * @param[in] shieldId (from 0 to 2)
  * @retval None
  **********************************************************/
-void L6474::SetRegisterToPredefinedValues(uint8_t shieldId)
+void Powerstep01::SetRegisterToPredefinedValues(uint8_t shieldId)
 {
   CmdSetParam(shieldId,
-                    L6474_ABS_POS,
+                    Powerstep01_ABS_POS,
                     0);
   CmdSetParam(shieldId,
-                    L6474_EL_POS,
+                    Powerstep01_EL_POS,
                     0);
   CmdSetParam(shieldId,
-                    L6474_MARK,
+                    Powerstep01_MARK,
                     0);
   switch (shieldId)
   {
     case 0:
       CmdSetParam(shieldId,
-                        L6474_TVAL,
-                        Tval_Current_to_Par(L6474_CONF_PARAM_TVAL_SHIELD_0));
+                        Powerstep01_TVAL,
+                        Tval_Current_to_Par(Powerstep01_CONF_PARAM_TVAL_SHIELD_0));
       CmdSetParam(shieldId,
-                        L6474_T_FAST,
-                        (uint8_t)L6474_CONF_PARAM_TOFF_FAST_SHIELD_0 |
-                        (uint8_t)L6474_CONF_PARAM_FAST_STEP_SHIELD_0);
+                        Powerstep01_T_FAST,
+                        (uint8_t)Powerstep01_CONF_PARAM_TOFF_FAST_SHIELD_0 |
+                        (uint8_t)Powerstep01_CONF_PARAM_FAST_STEP_SHIELD_0);
       CmdSetParam(shieldId,
-                        L6474_TON_MIN,
-                        Tmin_Time_to_Par(L6474_CONF_PARAM_TON_MIN_SHIELD_0));
+                        Powerstep01_TON_MIN,
+                        Tmin_Time_to_Par(Powerstep01_CONF_PARAM_TON_MIN_SHIELD_0));
       CmdSetParam(shieldId,
-                        L6474_TOFF_MIN,
-                        Tmin_Time_to_Par(L6474_CONF_PARAM_TOFF_MIN_SHIELD_0));
+                        Powerstep01_TOFF_MIN,
+                        Tmin_Time_to_Par(Powerstep01_CONF_PARAM_TOFF_MIN_SHIELD_0));
       CmdSetParam(shieldId,
-                        L6474_OCD_TH,
-                        L6474_CONF_PARAM_OCD_TH_SHIELD_0);
+                        Powerstep01_OCD_TH,
+                        Powerstep01_CONF_PARAM_OCD_TH_SHIELD_0);
       CmdSetParam(shieldId,
-                        L6474_STEP_MODE,
-                        (uint8_t)L6474_CONF_PARAM_STEP_SEL_SHIELD_0 |
-                        (uint8_t)L6474_CONF_PARAM_SYNC_SEL_SHIELD_0);
+                        Powerstep01_STEP_MODE,
+                        (uint8_t)Powerstep01_CONF_PARAM_STEP_SEL_SHIELD_0 |
+                        (uint8_t)Powerstep01_CONF_PARAM_SYNC_SEL_SHIELD_0);
       CmdSetParam(shieldId,
-                        L6474_ALARM_EN,
-                        L6474_CONF_PARAM_ALARM_EN_SHIELD_0);
+                        Powerstep01_ALARM_EN,
+                        Powerstep01_CONF_PARAM_ALARM_EN_SHIELD_0);
       CmdSetParam(shieldId,
-                        L6474_CONFIG,
-                        (uint16_t)L6474_CONF_PARAM_CLOCK_SETTING_SHIELD_0 |
-                        (uint16_t)L6474_CONF_PARAM_TQ_REG_SHIELD_0 |
-                        (uint16_t)L6474_CONF_PARAM_OC_SD_SHIELD_0 |
-                        (uint16_t)L6474_CONF_PARAM_SR_SHIELD_0 |
-                        (uint16_t)L6474_CONF_PARAM_TOFF_SHIELD_0);
+                        Powerstep01_CONFIG,
+                        (uint16_t)Powerstep01_CONF_PARAM_CLOCK_SETTING_SHIELD_0 |
+                        (uint16_t)Powerstep01_CONF_PARAM_TQ_REG_SHIELD_0 |
+                        (uint16_t)Powerstep01_CONF_PARAM_OC_SD_SHIELD_0 |
+                        (uint16_t)Powerstep01_CONF_PARAM_SR_SHIELD_0 |
+                        (uint16_t)Powerstep01_CONF_PARAM_TOFF_SHIELD_0);
       break;
     case 1:
       CmdSetParam(shieldId,
-                        L6474_TVAL,
-                        Tval_Current_to_Par(L6474_CONF_PARAM_TVAL_SHIELD_1));
+                        Powerstep01_TVAL,
+                        Tval_Current_to_Par(Powerstep01_CONF_PARAM_TVAL_SHIELD_1));
       CmdSetParam(shieldId,
-                        L6474_T_FAST,
-                        (uint8_t)L6474_CONF_PARAM_TOFF_FAST_SHIELD_1 |
-                        (uint8_t)L6474_CONF_PARAM_FAST_STEP_SHIELD_1);
+                        Powerstep01_T_FAST,
+                        (uint8_t)Powerstep01_CONF_PARAM_TOFF_FAST_SHIELD_1 |
+                        (uint8_t)Powerstep01_CONF_PARAM_FAST_STEP_SHIELD_1);
       CmdSetParam(shieldId,
-                        L6474_TON_MIN,
-                        Tmin_Time_to_Par(L6474_CONF_PARAM_TON_MIN_SHIELD_1));
+                        Powerstep01_TON_MIN,
+                        Tmin_Time_to_Par(Powerstep01_CONF_PARAM_TON_MIN_SHIELD_1));
       CmdSetParam(shieldId,
-                        L6474_TOFF_MIN,
-                        Tmin_Time_to_Par(L6474_CONF_PARAM_TOFF_MIN_SHIELD_1));
+                        Powerstep01_TOFF_MIN,
+                        Tmin_Time_to_Par(Powerstep01_CONF_PARAM_TOFF_MIN_SHIELD_1));
       CmdSetParam(shieldId,
-                        L6474_OCD_TH,
-                        L6474_CONF_PARAM_OCD_TH_SHIELD_1);
+                        Powerstep01_OCD_TH,
+                        Powerstep01_CONF_PARAM_OCD_TH_SHIELD_1);
       CmdSetParam(shieldId,
-                        L6474_STEP_MODE,
-                        (uint8_t)L6474_CONF_PARAM_STEP_SEL_SHIELD_1 |
-                        (uint8_t)L6474_CONF_PARAM_SYNC_SEL_SHIELD_1);
+                        Powerstep01_STEP_MODE,
+                        (uint8_t)Powerstep01_CONF_PARAM_STEP_SEL_SHIELD_1 |
+                        (uint8_t)Powerstep01_CONF_PARAM_SYNC_SEL_SHIELD_1);
       CmdSetParam(shieldId,
-                        L6474_ALARM_EN,
-                        L6474_CONF_PARAM_ALARM_EN_SHIELD_1);
+                        Powerstep01_ALARM_EN,
+                        Powerstep01_CONF_PARAM_ALARM_EN_SHIELD_1);
       CmdSetParam(shieldId,
-                        L6474_CONFIG,
-                        (uint16_t)L6474_CONF_PARAM_CLOCK_SETTING_SHIELD_1 |
-                        (uint16_t)L6474_CONF_PARAM_TQ_REG_SHIELD_1 |
-                        (uint16_t)L6474_CONF_PARAM_OC_SD_SHIELD_1 |
-                        (uint16_t)L6474_CONF_PARAM_SR_SHIELD_1 |
-                        (uint16_t)L6474_CONF_PARAM_TOFF_SHIELD_1);
+                        Powerstep01_CONFIG,
+                        (uint16_t)Powerstep01_CONF_PARAM_CLOCK_SETTING_SHIELD_1 |
+                        (uint16_t)Powerstep01_CONF_PARAM_TQ_REG_SHIELD_1 |
+                        (uint16_t)Powerstep01_CONF_PARAM_OC_SD_SHIELD_1 |
+                        (uint16_t)Powerstep01_CONF_PARAM_SR_SHIELD_1 |
+                        (uint16_t)Powerstep01_CONF_PARAM_TOFF_SHIELD_1);
       break;
     case 2:
       CmdSetParam(shieldId,
-                        L6474_TVAL,
-                        Tval_Current_to_Par(L6474_CONF_PARAM_TVAL_SHIELD_2));
+                        Powerstep01_TVAL,
+                        Tval_Current_to_Par(Powerstep01_CONF_PARAM_TVAL_SHIELD_2));
       CmdSetParam(shieldId,
-                        L6474_T_FAST,
-                        (uint8_t)L6474_CONF_PARAM_TOFF_FAST_SHIELD_2 |
-                        (uint8_t)L6474_CONF_PARAM_FAST_STEP_SHIELD_2);
+                        Powerstep01_T_FAST,
+                        (uint8_t)Powerstep01_CONF_PARAM_TOFF_FAST_SHIELD_2 |
+                        (uint8_t)Powerstep01_CONF_PARAM_FAST_STEP_SHIELD_2);
       CmdSetParam(shieldId,
-                        L6474_TON_MIN,
-                        Tmin_Time_to_Par(L6474_CONF_PARAM_TON_MIN_SHIELD_2));
+                        Powerstep01_TON_MIN,
+                        Tmin_Time_to_Par(Powerstep01_CONF_PARAM_TON_MIN_SHIELD_2));
       CmdSetParam(shieldId,
-                        L6474_TOFF_MIN,
-                        Tmin_Time_to_Par(L6474_CONF_PARAM_TOFF_MIN_SHIELD_2));
+                        Powerstep01_TOFF_MIN,
+                        Tmin_Time_to_Par(Powerstep01_CONF_PARAM_TOFF_MIN_SHIELD_2));
       CmdSetParam(shieldId,
-                        L6474_OCD_TH,
-                        L6474_CONF_PARAM_OCD_TH_SHIELD_2);
+                        Powerstep01_OCD_TH,
+                        Powerstep01_CONF_PARAM_OCD_TH_SHIELD_2);
       CmdSetParam(shieldId,
-                        L6474_STEP_MODE,
-                        (uint8_t)L6474_CONF_PARAM_STEP_SEL_SHIELD_2 |
-                        (uint8_t)L6474_CONF_PARAM_SYNC_SEL_SHIELD_2);
+                        Powerstep01_STEP_MODE,
+                        (uint8_t)Powerstep01_CONF_PARAM_STEP_SEL_SHIELD_2 |
+                        (uint8_t)Powerstep01_CONF_PARAM_SYNC_SEL_SHIELD_2);
       CmdSetParam(shieldId,
-                        L6474_ALARM_EN,
-                        L6474_CONF_PARAM_ALARM_EN_SHIELD_2);
+                        Powerstep01_ALARM_EN,
+                        Powerstep01_CONF_PARAM_ALARM_EN_SHIELD_2);
       CmdSetParam(shieldId,
-                        L6474_CONFIG,
-                        (uint16_t)L6474_CONF_PARAM_CLOCK_SETTING_SHIELD_2 |
-                        (uint16_t)L6474_CONF_PARAM_TQ_REG_SHIELD_2 |
-                        (uint16_t)L6474_CONF_PARAM_OC_SD_SHIELD_2 |
-                        (uint16_t)L6474_CONF_PARAM_SR_SHIELD_2 |
-                        (uint16_t)L6474_CONF_PARAM_TOFF_SHIELD_2);
+                        Powerstep01_CONFIG,
+                        (uint16_t)Powerstep01_CONF_PARAM_CLOCK_SETTING_SHIELD_2 |
+                        (uint16_t)Powerstep01_CONF_PARAM_TQ_REG_SHIELD_2 |
+                        (uint16_t)Powerstep01_CONF_PARAM_OC_SD_SHIELD_2 |
+                        (uint16_t)Powerstep01_CONF_PARAM_SR_SHIELD_2 |
+                        (uint16_t)Powerstep01_CONF_PARAM_TOFF_SHIELD_2);
       break;
     default: ;
   }
 }
 
 /******************************************************//**
- * @brief  Sets the registers of the L6474 to their predefined values 
- * from l6474_target_config.h
+ * @brief  Sets the registers of the Powerstep01 to their predefined values
+ * from Powerstep01_target_config.h
  * @param[in] shieldId (from 0 to 2)
  * @retval None
  **********************************************************/
-void L6474::WriteBytes(uint8_t *pByteToTransmit, uint8_t *pReceivedByte)
+void Powerstep01::WriteBytes(uint8_t *pByteToTransmit, uint8_t *pReceivedByte)
 {
   digitalWrite(SS, LOW);
   for (uint32_t i = 0; i < numberOfShields; i++)
@@ -1424,7 +1423,7 @@ void L6474::WriteBytes(uint8_t *pByteToTransmit, uint8_t *pReceivedByte)
  * Shield 1 uses PWM 2 based on timer 2
  * Shield 2 uses PWM3 based timer 0
  **********************************************************/
-void L6474::PwmInit(uint8_t shieldId)
+void Powerstep01::PwmInit(uint8_t shieldId)
 {
   switch (shieldId)
   {
@@ -1491,7 +1490,7 @@ void L6474::PwmInit(uint8_t shieldId)
  * @retval None
  * @note The frequency is directly the current speed of the shield
  **********************************************************/
-void L6474::Pwm1SetFreq(uint16_t newFreq)
+void Powerstep01::Pwm1SetFreq(uint16_t newFreq)
 {
   uint8_t index = 0;
   uint32_t top;
@@ -1530,7 +1529,7 @@ void L6474::Pwm1SetFreq(uint16_t newFreq)
  * @retval None
  * @note The frequency is directly the current speed of the shield
  **********************************************************/
-void L6474::Pwm2SetFreq(uint16_t newFreq)
+void Powerstep01::Pwm2SetFreq(uint16_t newFreq)
 {
   uint8_t index = 0;
   uint16_t top;
@@ -1569,7 +1568,7 @@ void L6474::Pwm2SetFreq(uint16_t newFreq)
  * @retval None
  * @note The frequency is directly the current speed of the shield
  **********************************************************/
-void L6474::Pwm3SetFreq(uint16_t newFreq)
+void Powerstep01::Pwm3SetFreq(uint16_t newFreq)
 {
   uint8_t index = 0;
   uint16_t top;
@@ -1611,7 +1610,7 @@ void L6474::Pwm3SetFreq(uint16_t newFreq)
  * @param[in] shieldId (from 0 to 2)
  * @retval None
  **********************************************************/
-void L6474::PwmStop(uint8_t shieldId)
+void Powerstep01::PwmStop(uint8_t shieldId)
 {
   switch (shieldId)
   {
@@ -1655,26 +1654,26 @@ void L6474::PwmStop(uint8_t shieldId)
 
 /******************************************************//**
  * @brief  Sets the parameters of the shield to predefined values
- * from l6474_target_config.h
+ * from Powerstep01_target_config.h
  * @param None
  * @retval None
  **********************************************************/
-void L6474::SetShieldParamsToPredefinedValues(void)
+void Powerstep01::SetShieldParamsToPredefinedValues(void)
 {
-  shieldPrm[0].acceleration = L6474_CONF_PARAM_ACC_SHIELD_0;
-  shieldPrm[0].deceleration = L6474_CONF_PARAM_DEC_SHIELD_0;
-  shieldPrm[0].maxSpeed = L6474_CONF_PARAM_MAX_SPEED_SHIELD_0;
-  shieldPrm[0].minSpeed = L6474_CONF_PARAM_MIN_SPEED_SHIELD_0;
+  shieldPrm[0].acceleration = Powerstep01_CONF_PARAM_ACC_SHIELD_0;
+  shieldPrm[0].deceleration = Powerstep01_CONF_PARAM_DEC_SHIELD_0;
+  shieldPrm[0].maxSpeed = Powerstep01_CONF_PARAM_MAX_SPEED_SHIELD_0;
+  shieldPrm[0].minSpeed = Powerstep01_CONF_PARAM_MIN_SPEED_SHIELD_0;
   
-  shieldPrm[1].acceleration = L6474_CONF_PARAM_ACC_SHIELD_1;
-  shieldPrm[1].deceleration = L6474_CONF_PARAM_DEC_SHIELD_1;
-  shieldPrm[1].maxSpeed = L6474_CONF_PARAM_MAX_SPEED_SHIELD_1;
-  shieldPrm[1].minSpeed = L6474_CONF_PARAM_MIN_SPEED_SHIELD_1;
+  shieldPrm[1].acceleration = Powerstep01_CONF_PARAM_ACC_SHIELD_1;
+  shieldPrm[1].deceleration = Powerstep01_CONF_PARAM_DEC_SHIELD_1;
+  shieldPrm[1].maxSpeed = Powerstep01_CONF_PARAM_MAX_SPEED_SHIELD_1;
+  shieldPrm[1].minSpeed = Powerstep01_CONF_PARAM_MIN_SPEED_SHIELD_1;
   
-  shieldPrm[2].acceleration = L6474_CONF_PARAM_ACC_SHIELD_2;
-  shieldPrm[2].deceleration = L6474_CONF_PARAM_DEC_SHIELD_2;
-  shieldPrm[2].maxSpeed = L6474_CONF_PARAM_MAX_SPEED_SHIELD_2;
-  shieldPrm[2].minSpeed = L6474_CONF_PARAM_MIN_SPEED_SHIELD_2;
+  shieldPrm[2].acceleration = Powerstep01_CONF_PARAM_ACC_SHIELD_2;
+  shieldPrm[2].deceleration = Powerstep01_CONF_PARAM_DEC_SHIELD_2;
+  shieldPrm[2].maxSpeed = Powerstep01_CONF_PARAM_MAX_SPEED_SHIELD_2;
+  shieldPrm[2].minSpeed = Powerstep01_CONF_PARAM_MIN_SPEED_SHIELD_2;
   
   for (uint8_t i = 0; i < numberOfShields; i++)
   {
@@ -1688,9 +1687,9 @@ void L6474::SetShieldParamsToPredefinedValues(void)
  * @param[in] shieldId (from 0 to 2)
  * @retval None
  **********************************************************/
-void L6474::StartMovement(uint8_t shieldId)  
+void Powerstep01::StartMovement(uint8_t shieldId)  
 {
-  /* Enable L6474 powerstage */
+  /* Enable Powerstep01 powerstage */
   CmdEnable(shieldId);
 
   if (shieldPrm[shieldId].endAccPos != 0)
@@ -1705,9 +1704,9 @@ void L6474::StartMovement(uint8_t shieldId)
   shieldPrm[shieldId].accu = 0;
   shieldPrm[shieldId].relativePos = 0;
   ApplySpeed(shieldId, shieldPrm[shieldId].minSpeed);
-#ifdef _DEBUG_L6474
-  snprintf(l6474StrOut, DEBUG_BUFFER_SIZE, "Stop->Acc: speed: %u relPos: %ld\n", shieldPrm[shieldId].minSpeed, shieldPrm[shieldId].relativePos) ;
-  Serial.println(l6474StrOut);
+#ifdef _DEBUG_Powerstep01
+  snprintf(Powerstep01StrOut, DEBUG_BUFFER_SIZE, "Stop->Acc: speed: %u relPos: %ld\n", shieldPrm[shieldId].minSpeed, shieldPrm[shieldId].relativePos) ;
+  Serial.println(Powerstep01StrOut);
 #endif        
 }
 
@@ -1716,7 +1715,7 @@ void L6474::StartMovement(uint8_t shieldId)
  * @param[in] Tval
  * @retval TVAL values
  **********************************************************/
-inline uint8_t L6474::Tval_Current_to_Par(double Tval)
+inline uint8_t Powerstep01::Tval_Current_to_Par(double Tval)
 {
   return ((uint8_t)(((Tval - 31.25)/31.25)+0.5));
 }
@@ -1727,12 +1726,12 @@ inline uint8_t L6474::Tval_Current_to_Par(double Tval)
  * @param[in] Tmin
  * @retval TON_MIN values
  **********************************************************/
-inline uint8_t L6474::Tmin_Time_to_Par(double Tmin)
+inline uint8_t Powerstep01::Tmin_Time_to_Par(double Tmin)
 {
   return ((uint8_t)(((Tmin - 0.5)*2)+0.5));
 }
 
-#ifdef _USE_TIMER_0_FOR_L6474
+#ifdef _USE_TIMER_0_FOR_Powerstep01
 /******************************************************//**
  * @brief Timer0 interrupt handler used by PW3 for shield 2
  * and enable the power bridge
@@ -1742,7 +1741,7 @@ inline uint8_t L6474::Tmin_Time_to_Par(double Tmin)
 ISR(TIMER0_OVF_vect) 
 {
   static bool isr0Toggle = false;
-  class L6474* instancePtr = L6474::GetInstancePtr();
+  class Powerstep01* instancePtr = Powerstep01::GetInstancePtr();
   if (isr0Toggle)
   {
     if (instancePtr != NULL)
@@ -1769,7 +1768,7 @@ ISR(TIMER0_OVF_vect)
  **********************************************************/
 ISR(TIMER1_OVF_vect) 
 {
-  class L6474* instancePtr = L6474::GetInstancePtr();
+  class Powerstep01* instancePtr = Powerstep01::GetInstancePtr();
   if (instancePtr != NULL)
   {  
     if (instancePtr->GetShieldState(0) != INACTIVE)
@@ -1787,7 +1786,7 @@ ISR(TIMER1_OVF_vect)
  **********************************************************/
  ISR(TIMER2_OVF_vect) 
 {
-  class L6474* instancePtr = L6474::GetInstancePtr();
+  class Powerstep01* instancePtr = Powerstep01::GetInstancePtr();
   if (instancePtr != NULL)
   {  
     if (instancePtr->GetShieldState(1) != INACTIVE)
@@ -1802,7 +1801,7 @@ ISR(TIMER1_OVF_vect)
  * @param  None
  * @retval number of bytes of free ram
  **********************************************************/
-#ifdef _DEBUG_L6474
+#ifdef _DEBUG_Powerstep01
 uint16_t GetFreeRam (void)
 {
   extern uint16_t __heap_start, *__brkval;
