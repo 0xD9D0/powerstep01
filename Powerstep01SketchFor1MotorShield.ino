@@ -1,10 +1,10 @@
-/* This sketch is an example use of the Powerstep01 library with one shield  X-NUCLEO-IHM01A1*/
+/* This sketch is an example use of the POWERSTEP01 library with one shield  X-NUCLEO-IHM01A1*/
 /* It drives one stepper motor */
 
 #include <powerstep01.h>
 #include <SPI.h>
 
-Powerstep01 PS01;  
+POWERSTEP01 PS01;
   
 void setup()
 {
@@ -21,8 +21,8 @@ void setup()
 
 //----- Init
   /* Start the library to use 1 shield */
-  /* The Powerstep01 registers are set with the predefined values */
-  /* from file Powerstep01_target_config.h*/
+  /* The POWERSTEP01 registers are set with the predefined values */
+  /* from file POWERSTEP01_target_config.h*/
   PS01.Begin(1);
 
   /* Attach the function MyFlagInterruptHandler (defined below) to the flag interrupt */
@@ -205,13 +205,13 @@ void setup()
   /* Try to read an inexistent register */
   /* the flag interrupt should be raised */
   /* and the MyFlagInterruptHandler function called */
-  PS01.CmdGetParam(0,(Powerstep01_Registers_t)0x1F);
+  PS01.CmdGetParam(0,(POWERSTEP01_Registers_t)0x1F);
   delay(500);
 
 //----- Change step mode to full step mode
 
   /* Select full step mode for shield 0 */
-  PS01.SelectStepMode(0,Powerstep01_STEP_SEL_1);
+  PS01.SelectStepMode(0,POWERSTEP01_STEP_SEL_1);
 
   /* Set speed and acceleration to be consistent with full step mode */
   PS01.SetMaxSpeed(0,100);
@@ -234,7 +234,7 @@ void setup()
 //----- Restore 1/16 microstepping mode
 
   /* Reset shield 0 to 1/16 microstepping mode */
-  PS01.SelectStepMode(0,Powerstep01_STEP_SEL_1_16);
+  PS01.SelectStepMode(0,POWERSTEP01_STEP_SEL_1_16);
 
   /* Update speed, acceleration, deceleration for 1/16 microstepping mode*/
   PS01.SetMaxSpeed(0,1600);
@@ -261,17 +261,17 @@ void loop()
 
 void MyFlagInterruptHandler(void)
 {
-  /* Get the value of the status register via the Powerstep01 command GET_STATUS */
+  /* Get the value of the status register via the POWERSTEP01 command GET_STATUS */
   uint16_t statusRegister = PS01.CmdGetStatus(0);
 
   /* Check HIZ flag: if set, power brigdes are disabled */
-  if ((statusRegister & Powerstep01_STATUS_HIZ) == Powerstep01_STATUS_HIZ)
+  if ((statusRegister & POWERSTEP01_STATUS_HIZ) == POWERSTEP01_STATUS_HIZ)
   {
     // HIZ state
   }
 
   /* Check direction bit */
-  if ((statusRegister & Powerstep01_STATUS_DIR) == Powerstep01_STATUS_DIR)
+  if ((statusRegister & POWERSTEP01_STATUS_DIR) == POWERSTEP01_STATUS_DIR)
   {
     // Forward direction is set
   }  
@@ -281,39 +281,39 @@ void MyFlagInterruptHandler(void)
   }  
 
   /* Check NOTPERF_CMD flag: if set, the command received by SPI can't be performed */
-  /* This often occures when a command is sent to the Powerstep01 */
+  /* This often occures when a command is sent to the POWERSTEP01 */
   /* while it is in HIZ state */
-  if ((statusRegister & Powerstep01_STATUS_NOTPERF_CMD) == Powerstep01_STATUS_NOTPERF_CMD)
+  if ((statusRegister & POWERSTEP01_STATUS_NOTPERF_CMD) == POWERSTEP01_STATUS_NOTPERF_CMD)
   {
        // Command received by SPI can't be performed
   }  
 
   /* Check WRONG_CMD flag: if set, the command does not exist */
-  if ((statusRegister & Powerstep01_STATUS_WRONG_CMD) == Powerstep01_STATUS_WRONG_CMD)
+  if ((statusRegister & POWERSTEP01_STATUS_WRONG_CMD) == POWERSTEP01_STATUS_WRONG_CMD)
   {
      //command received by SPI does not exist 
   }  
 
   /* Check UVLO flag: if not set, there is an undervoltage lock-out */
-  if ((statusRegister & Powerstep01_STATUS_UVLO) == 0)
+  if ((statusRegister & POWERSTEP01_STATUS_UVLO) == 0)
   {
      //undervoltage lock-out 
   }  
 
   /* Check TH_WRN flag: if not set, the thermal warning threshold is reached */
-  if ((statusRegister & Powerstep01_STATUS_TH_WRN) == 0)
+  if ((statusRegister & POWERSTEP01_STATUS_TH_WRN) == 0)
   {
     //thermal warning threshold is reached
   }    
 
   /* Check TH_SHD flag: if not set, the thermal shut down threshold is reached */
-  if ((statusRegister & Powerstep01_STATUS_TH_SD) == 0)
+  if ((statusRegister & POWERSTEP01_STATUS_TH_SD) == 0)
   {
     //thermal shut down threshold is reached * 
   }    
 
   /* Check OCD  flag: if not set, there is an overcurrent detection */
-  if ((statusRegister & Powerstep01_STATUS_OCD) == 0)
+  if ((statusRegister & POWERSTEP01_STATUS_OCD) == 0)
   {
     //overcurrent detection 
   }      
