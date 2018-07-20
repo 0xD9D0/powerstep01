@@ -792,7 +792,7 @@ class POWERSTEP01 {
     /// @defgroup group1 DEVICE control functions
     ///@{
     void AttachFlagInterrupt(void (*callback)(void));     //Attach a user callback to the flag Interrupt
-    void Begin(uint8_t nbDEVICEs);                        //Start the POWERSTEP01 library
+    void Begin(uint8_t nbDEVICEs, uint8_t SSPin[]);                        //Start the POWERSTEP01 library
     uint16_t GetAcceleration(uint8_t DEVICEId);           //Return the acceleration in pps^2
     uint16_t GetCurrentSpeed(uint8_t DEVICEId);           //Return the current speed in pps
     uint16_t GetDeceleration(uint8_t DEVICEId);           //Return the deceleration in pps^2
@@ -847,14 +847,29 @@ class POWERSTEP01 {
     static class POWERSTEP01 *GetInstancePtr(void);
     ///@}
     
-
-
+	/// @defgroup group5 new added functions 
+	void setMaxSpeed(uint8_t DeviceId, unsigned long stepsPerSecond);
+	unsigned long maxSpeedCalc (unsigned long stepsPerSec);
+	void setMinSpeed(uint8_t DeviceId, int speed);
+	unsigned long MinSpeedCalc(float stepsPerSec);
+	void setAcc(uint8_t DeviceId, unsigned long stepsPerSecondPerSecond);
+	unsigned long accCalc(unsigned long stepsPerSecPerSec);
+	void setDec(uint8_t DeviceId, unsigned long stepsPerSecondPerSecond);
+	unsigned long decCalc(unsigned long stepsPerSecPerSec);
+	void setFullSpeed(uint8_t DeviceId, float stepsPerSecond);
+	unsigned long FSCalc(float stepsPerSec);
+	void setMicroSteps(uint8_t deviceId, int microSteps);
+	void setThresholdSpeed(uint8_t DeviceId,float stepsPerSecond) ;
+	void free(uint8_t deviceId);
+	void CmdGoUntil(uint8_t deviceId, motorAction_t action, motorDir_t direction, uint32_t speed);
+	bool SetNbDevices(uint8_t nbDevices);
+	bool IsBusy(uint8_t deviceId);
   private:
     static void FlagInterruptHandler(void);
     static void BusyInterruptHandler(void);
 
     void SetRegisterToPredefinedValues(uint8_t deviceId);
-    void WriteBytes(uint8_t *pByteToTransmit, uint8_t *pReceivedByte);    
+    void WriteBytes(uint8_t *pByteToTransmit, uint8_t *pReceivedByte, uint8_t deviceId);    
     
     int32_t ConvertPosition(uint32_t abs_position_reg);
     void ErrorHandler(uint16_t error);
@@ -872,7 +887,7 @@ class POWERSTEP01 {
     static volatile uint8_t numberOfDevices;
     static uint8_t spiTxBursts[POWERSTEP01_CMD_ARG_MAX_NB_BYTES][MAX_NUMBER_OF_DEVICES];
     static uint8_t spiRxBursts[POWERSTEP01_CMD_ARG_MAX_NB_BYTES][MAX_NUMBER_OF_DEVICES];
-
+	static volatile uint8_t _SSPins[MAX_NUMBER_OF_DEVICES];
     motorDrv_t* Powerstep01_GetMotorHandle(void);                  //Return handle of the motor driver handle
 
 };

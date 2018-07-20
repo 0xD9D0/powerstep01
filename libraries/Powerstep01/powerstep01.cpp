@@ -47,6 +47,7 @@ volatile void (*POWERSTEP01::flagInterruptCallback)(void);
 /// Function pointer to busy interrupt call back
 volatile void (*POWERSTEP01::busyInterruptCallback)(void);
 volatile uint8_t POWERSTEP01::numberOfDevices;
+static volatile uint8_t POWERSTEP01::_SSPins[MAX_NUMBER_OF_DEVICES];
 uint8_t POWERSTEP01::spiTxBursts[POWERSTEP01_CMD_ARG_MAX_NB_BYTES][MAX_NUMBER_OF_DEVICES];
 uint8_t POWERSTEP01::spiRxBursts[POWERSTEP01_CMD_ARG_MAX_NB_BYTES][MAX_NUMBER_OF_DEVICES];
 volatile bool POWERSTEP01::spiPreemtionByIsr = false;
@@ -83,10 +84,10 @@ void POWERSTEP01::AttachFlagInterrupt(void (*callback)(void))
  * @param[in] nbDEVICEs Number of POWERSTEP01 DEVICEs to use (from 1 to 3)
  * @retval None
  **********************************************************/
-void POWERSTEP01::Begin(uint8_t nbDEVICEs)
+void POWERSTEP01::Begin(uint8_t nbDEVICEs, uint8_t SSPin[])
 {
   numberOfDevices = nbDEVICEs;
-  
+
   // start the SPI library:
   SPI.begin();
   SPI.setBitOrder(MSBFIRST);
@@ -111,6 +112,7 @@ void POWERSTEP01::Begin(uint8_t nbDEVICEs)
 
     /* Get Status to clear flags after start up */
     CmdGetStatus(i);
+	_SSPins[i] = SSPin[i];
   }
 }
 
@@ -346,7 +348,7 @@ uint32_t POWERSTEP01::CmdGetParam(uint8_t DEVICEId, powerstep01_Registers_t para
        i++)
   {
      WriteBytes(&spiTxBursts[i][0],
-                          &spiRxBursts[i][0]);
+                          &spiRxBursts[i][0],DEVICEId);
   }
   
   spiRxData = ((uint32_t)spiRxBursts[1][spiIndex] << 16)|
@@ -402,7 +404,7 @@ uint16_t POWERSTEP01::CmdGetStatus(uint8_t DEVICEId)
 
   for (i = 0; i < POWERSTEP01_CMD_ARG_NB_BYTES_GET_STATUS + POWERSTEP01_RSP_NB_BYTES_GET_STATUS; i++)
   {
-     WriteBytes(&spiTxBursts[i][0], &spiRxBursts[i][0]);
+     WriteBytes(&spiTxBursts[i][0], &spiRxBursts[i][0],DEVICEId);
   }
   status = (spiRxBursts[1][spiIndex] << 8) | (spiRxBursts[2][spiIndex]);
   
@@ -492,7 +494,7 @@ void POWERSTEP01::CmdSetParam(uint8_t DEVICEId,
        i < POWERSTEP01_CMD_ARG_MAX_NB_BYTES;
        i++)
   {
-     WriteBytes(&spiTxBursts[i][0],&spiRxBursts[i][0]);
+     WriteBytes(&spiTxBursts[i][0],&spiRxBursts[i][0],DEVICEId);
   }
   /* re-enable interrupts after SPI transfers*/
   interrupts();
@@ -592,6 +594,12 @@ void POWERSTEP01::CmdHardHiZ(uint8_t deviceId)
 {
   SendCommand(deviceId, POWERSTEP01_HARD_HIZ, 0);
 }
+// free is an alias for CmdHardHiz
+void POWERSTEP01::free(uint8_t deviceId)
+{
+SendCommand(deviceId, POWERSTEP01_HARD_HIZ, 0);
+}
+
 /******************************************************//**
  * @brief Issues PowerStep01 Reset Pos command
  * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
@@ -821,7 +829,7 @@ void POWERSTEP01::SendCommand(uint8_t deviceId, uint8_t param, uint32_t value)
          loop < POWERSTEP01_CMD_ARG_MAX_NB_BYTES;
          loop++)
     {
-       WriteBytes(&spiTxBursts[loop][0], &spiRxBursts[loop][0]);
+       WriteBytes(&spiTxBursts[loop][0], &spiRxBursts[loop][0],deviceId);
     }
   }
 }
@@ -1371,23 +1379,286 @@ void POWERSTEP01::SetRegisterToPredefinedValues(uint8_t deviceId)
  * @param[in] DEVICEId (from 0 to 2)
  * @retval None
  **********************************************************/
-void POWERSTEP01::WriteBytes(uint8_t *pByteToTransmit, uint8_t *pReceivedByte)
+void POWERSTEP01::WriteBytes(uint8_t *pByteToTransmit, uint8_t *pReceivedByte, uint8_t deviceId)
 {
-  digitalWrite(SS, LOW);
+  digitalWrite(_SSPins[deviceId], LOW);
   for (uint32_t i = 0; i < numberOfDevices; i++)
   {
     *pReceivedByte = SPI.transfer(*pByteToTransmit);
     pByteToTransmit++;
     pReceivedByte++;
   }
-  digitalWrite(SS, HIGH);
+  digitalWrite(_SSPins[deviceId], HIGH);
   if (isrFlag)
   {
     spiPreemtionByIsr = true;
   }
 }
 
+///////////////////////////////// NEW ADDED FUNCTIONS
 
+/******************************************************//**
+ * @brief Sets maximum speed of the stepper in the 
+ * MAX_SPEED register. if a command tried setting a speed more than this the motor 
+ * will simply run at this speed. The value is 0x041 on power up 
+ * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
+ * &param[in] stepsPerSecond steps per second 
+ * @retval none
+ *********************************************************/
+void POWERSTEP01::setMaxSpeed(uint8_t DeviceId, unsigned long stepsPerSecond)
+{
+	unsigned long integerSpeed = maxSpeedCalc(stepsPerSecond);
+	CmdSetParam(DeviceId, POWERSTEP01_MAX_SPEED, integerSpeed);
+	return;
+}
+
+
+/******************************************************//**
+ * @brief calculates the speed by converting the value 
+ * from steps/s to a 10 bit value. the maximum for 10 bits is 0x03ff
+ * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
+ * &param[in] stepsPerSecond steps per second 
+ * @retval unsigned long steps per tick 
+ *********************************************************/
+unsigned long POWERSTEP01::maxSpeedCalc (unsigned long stepsPerSec)
+{
+	unsigned long temp = ceil(stepsPerSec* .065536);
+	if (temp > 0x000003FF) return 0x000003FF;
+	else return temp;
+}
+
+
+	/******************************************************//**
+ * @brief Sets minimum speed of the stepper in the 
+ * MIN_SPEED register.for any move or goto function where no speed is specified
+* this value will be used 
+ * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
+ * &param[in] stepsPerSecond steps per second 
+ * @retval none
+ *********************************************************/
+void POWERSTEP01::setMinSpeed(uint8_t DeviceId, int speed){
+
+	CmdSetParam(DeviceId, POWERSTEP01_MIN_SPEED, MinSpeedCalc(speed));
+}
+
+/******************************************************//**
+ * @brief The value in the MIN_SPEED register is [(steps/s)*(tick)]/(2^-24) where tick is 
+ * 250ns (datasheet value)- 0x000 on boot.
+ * Multiply desired steps/s by 4.1943 to get an appropriate value for this register
+ * This is a 12-bit value, so we need to make sure the value is at or below 0xFFF.
+ * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
+ * &param[in] stepsPerSecond steps per second 
+ * @retval unsigned long steps per tick 
+ *********************************************************/
+unsigned long POWERSTEP01::MinSpeedCalc(float stepsPerSec){
+
+	float temp = stepsPerSec * 4.1943;
+	if( (unsigned long) long(temp) > 0x00000FFF) return 0x00000FFF;
+	else return (unsigned long) long(temp);
+}
+
+
+/******************************************************//**
+ * @brief Configure the acceleration rate, in steps/tick/tick. There is also a DEC register;
+ * both of them have a function (AccCalc() and DecCalc() respectively) that convert
+ * from steps/s/s into the appropriate value for the register. Writing ACC to 0xfff
+ * sets the acceleration and deceleration to 'infinite' (or as near as the driver can
+ *  manage). If ACC is set to 0xfff, DEC is ignored. To get infinite deceleration
+ * without infinite acceleration, only hard stop will work.
+ * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
+ * &param[in] stepsPerSecondpersecond steps per second per second 
+ * @retval none
+ *********************************************************/	
+void POWERSTEP01::setAcc(uint8_t DeviceId, unsigned long stepsPerSecondPerSecond)
+{
+	unsigned long integerAcc = accCalc(stepsPerSecondPerSecond);
+	CmdSetParam(DeviceId, POWERSTEP01_ACC, integerAcc);
+	return;
+}
+
+ 
+/******************************************************//**
+ * @brief The value in the ACC register is [(steps/s/s)*(tick^2)]/(2^-40) where tick is
+ * 250ns (datasheet value)- 0x08A on boot.
+ * Multiply desired steps/s/s by .137438 to get an appropriate value for this register.
+ * This is a 12-bit value, so we need to make sure the value is at or below 0xFFF.
+ * &param[in] stepsPerSecondPerSecond steps per second per second
+ * @retval unsigned long 12 bit acc
+ *********************************************************/
+unsigned long POWERSTEP01::accCalc(unsigned long stepsPerSecPerSec)
+{
+	unsigned long temp = stepsPerSecPerSec * 0.137438;
+	if(temp > 0x00000FFF) return 0x00000FFF;
+	else return temp;
+}
+
+/******************************************************//**
+ * @brief Configure the acceleration rate, in steps/tick/tick. There is also a DEC register;
+ * both of them have a function (AccCalc() and DecCalc() respectively) that convert
+ * from steps/s/s into the appropriate value for the register. Writing ACC to 0xfff
+ * sets the acceleration and deceleration to 'infinite' (or as near as the driver can
+ *  manage). If ACC is set to 0xfff, DEC is ignored. To get infinite deceleration
+ * without infinite acceleration, only hard stop will work.
+ * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
+ * &param[in] stepsPerSecondpersecond steps per second per second 
+ * @retval none
+ *********************************************************/	
+void POWERSTEP01::setDec(uint8_t DeviceId, unsigned long stepsPerSecondPerSecond)
+{
+	unsigned long integerDec = decCalc(stepsPerSecondPerSecond);
+	CmdSetParam(DeviceId, POWERSTEP01_DEC, integerDec);
+	return;
+}
+
+
+/******************************************************//**
+ * @brief The calculation for DEC is the same as for ACC. Value is 0x08A on boot.
+ * This is a 12-bit value, so we need to make sure the value is at or below 0xFFF.
+ * Multiply desired steps/s/s by .137438 to get an appropriate value for this register.
+ * This is a 12-bit value, so we need to make sure the value is at or below 0xFFF.
+ * &param[in] stepsPerSecondPerSecond steps per second per second
+ * @retval unsigned long 12 bit dec
+ *********************************************************/
+unsigned long POWERSTEP01::decCalc(unsigned long stepsPerSecPerSec)
+{
+	unsigned long temp = stepsPerSecPerSec * 0.137438;
+	if(temp > 0x00000FFF) return 0x00000FFF;
+	else return temp;
+}
+
+/******************************************************//**
+ * @brief This sets the full speed register to a certain speed
+ * the full speed is the speed that if surpassed the motor will cease microstepping 
+ * and go to full-step
+ * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
+ * &param[in] stepsPerSecond steps per second 
+ * @retval none
+ *********************************************************/	
+void POWERSTEP01::setFullSpeed(uint8_t DeviceId, float stepsPerSecond)
+{
+  unsigned long integerSpeed = FSCalc(stepsPerSecond);
+  CmdSetParam(DeviceId, POWERSTEP01_FS_SPD, integerSpeed);
+}
+
+// Alias for setFullSpeed 
+void POWERSTEP01::setThresholdSpeed(uint8_t DeviceId,float stepsPerSecond)
+{setFullSpeed(DeviceId,stepsPerSecond);}
+
+/******************************************************//**
+ * @brief the value in the FS_SPD register is ([(steps/s)*(tick)]/(2^-18))-0.5 where tick is 
+ * 250ns (datasheet value)- 0x027 on boot.
+ * Multiply desired steps/s by .065536 and subtract .5 to get an appropriate value for this register
+ * This is a 10-bit value, so we need to make sure the value is at or below 0x3FF.
+ * &param[in] stepsPerSecond steps per second 
+ * @retval unsigned long steps per tick 
+ *********************************************************/	
+unsigned long POWERSTEP01::FSCalc(float stepsPerSec)
+{
+  float temp = (stepsPerSec * .065536)-.5;
+  if( (unsigned long) long(temp) > 0x000003FF) return 0x000003FF;
+  else return (unsigned long) long(temp);
+}
+
+
+/******************************************************//**
+ * @brief This function maps the input from 
+ * the main function code to the selectstpeMode function to modify the microstepping
+ * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
+ * &param[in] microSteps this parameter can be 1,2,4,8,16,32,64,128 
+ * @retval none
+ *********************************************************/
+void POWERSTEP01::setMicroSteps(uint8_t deviceId, int microSteps){
+	
+	switch (microSteps)
+	{
+		case 1:
+		SelectStepMode(deviceId, STEP_MODE_FULL);
+		break;
+		case 2: 
+		SelectStepMode(deviceId, STEP_MODE_HALF);
+		break;		
+		case 4: 
+		SelectStepMode(deviceId, STEP_MODE_1_4);
+		break;
+		case 8: 
+		SelectStepMode(deviceId, STEP_MODE_1_8);
+		break;
+		case 16: 
+		SelectStepMode(deviceId, STEP_MODE_1_16);
+		break;
+		case 32: 
+		SelectStepMode(deviceId, STEP_MODE_1_32);
+		break;
+		case 64: 
+		SelectStepMode(deviceId, STEP_MODE_1_64);
+		break;
+		case 128: 
+		SelectStepMode(deviceId, STEP_MODE_1_128);
+		break;
+		default: 
+		SelectStepMode(deviceId, STEP_MODE_FULL);	
+	}
+	 return;	  
+}
+
+/******************************************************//**
+ * @brief Issues PowerStep01 Go Until command
+ * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
+ * @param[in] action ACTION_RESET or ACTION_COPY
+ * @param[in] direction movement direction
+ * @param[in] speed in 2^-28 step/tick
+ * @retval None
+ *********************************************************/
+void POWERSTEP01::CmdGoUntil(uint8_t deviceId, 
+                           motorAction_t action, 
+                           motorDir_t direction, 
+                           uint32_t speed)
+{
+  SendCommand(deviceId,
+                          (uint8_t)POWERSTEP01_GO_UNTIL | (uint8_t)action | (uint8_t)direction,
+                          speed); 
+}
+
+/******************************************************//**
+ * @brief  Sets the number of devices to be used 
+ * @param[in] nbDevices (from 1 to MAX_NUMBER_OF_DEVICES)
+ * @retval TRUE if successfull, FALSE if failure, attempt to set a number of 
+ * devices greater than MAX_NUMBER_OF_DEVICES
+ **********************************************************/
+bool POWERSTEP01::SetNbDevices(uint8_t nbDevices)
+{
+  if (nbDevices <= MAX_NUMBER_OF_DEVICES)
+  {
+    numberOfDevices = nbDevices;
+    return TRUE;
+  }
+  else
+  {
+    return FALSE;
+  }
+}
+
+/******************************************************//**
+ * @brief Checks if the specified device is busy [Different implementation of IsDeviceBusy 
+ * by reading the Busy flag bit ot its status Register
+ * @param[in] deviceId (from 0 to MAX_NUMBER_OF_DEVICES-1 )
+ * @retval true if device is busy, false zero
+ *********************************************************/
+bool POWERSTEP01::IsBusy(uint8_t deviceId)
+{
+cli();
+	int temp = 0;
+	digitalWrite(_SSPins[deviceId],LOW);
+	temp=SPI.transfer(POWERSTEP01_GET_STATUS);
+	temp= SPI.transfer(0)<<8;
+	temp |= SPI.transfer(0);
+	SPI.endTransaction();
+	digitalWrite(_SSPins[deviceId],HIGH);
+	sei();
+	return (!bitRead(temp,1));
+	
+
+}
 
 /******************************************************//**
  * @brief  Debug   function to get the amount of free ram
