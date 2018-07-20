@@ -17,13 +17,16 @@ void setup()
 	digitalWrite(13, LOW);    // turn the LED off by making the voltage LOW
 	delay(300);
 	digitalWrite(13, HIGH);
+	 uint8_t SSP[]={53};
+   	pinMode(53, OUTPUT);
+  	digitalWrite(53, HIGH);
 
 
 //----- Init
   /* Start the library to use 1 shield */
   /* The POWERSTEP01 registers are set with the predefined values */
   /* from file POWERSTEP01_target_config.h*/
-  PS01.Begin(1);
+  PS01.Begin(1,SSP);
 
   /* Attach the function MyFlagInterruptHandler (defined below) to the flag interrupt */
   PS01.AttachFlagInterrupt(MyFlagInterruptHandler);
